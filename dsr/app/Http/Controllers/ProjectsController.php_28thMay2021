@@ -1,0 +1,675 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use App\Project;
+use App\User;
+use App\Dsr;
+use DB;
+use App\Leaves;
+use App\Leave_approval;
+use Illuminate\Support\Facades\Auth;
+use App\Leave_categories;
+use App\Leaves_advance;
+
+class ProjectsController extends Controller
+{
+
+    public function __construct()
+    {
+        $this->middleware('IsAdmin');
+    }	
+    
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function index()
+    {
+        //
+        //$projects = Project::all();
+        
+        
+        $projects = Project::with('manager')->where('active', '=', 1)->get();
+        
+        
+       
+        return view('admin.projects', compact('projects'));
+    }
+
+    
+    public function archive()
+    {
+        //
+        $projects = Project::with('manager')->where('active', '=', 0)->get();
+        return view('admin.projects', compact('projects'));
+    }
+    
+    
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function create()
+    {
+        //
+        $users = DB::select('select id, first_name, last_name from users where working_status = ? and (designation = ? OR designation = ?)', ['Working', 'Project Manager','MD']);
+        
+        $managers = [];
+        foreach($users as $usr){
+            $managers[$usr->id] ="{$usr->first_name} {$usr->last_name}";
+        }
+
+        return view('admin.addpro', compact('managers'));
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function store(Request $request)
+    {
+        //
+        
+        $this->validate($request, [
+         'project_name' => 'bail|required|unique:projects',
+         'project_name' => 'required',
+         ]);
+                
+        $project = new Project();
+        
+        $project->project_name = $request->project_name;
+        $project->mail_to = $request->mail_to;
+        $project->mail_cc = $request->mail_cc;
+        $project->message = $request->message;
+        $project->dead_line = $request->dead_line;
+        $project->expected_start = $request->expected_start;
+        $project->complete_on = $request->complete_on;
+        $project->active = $request->active;
+        $project->remark = $request->remark;
+        $project->manager_id = $request->manager_id;
+        $project->save();
+        
+        
+        
+        return redirect(Route('projects.index'));
+    }
+
+    /**
+     * Display the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function show($id)
+    {
+        //
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function edit($id)
+    {
+        //
+        $project = Project::findOrFail($id);
+        $users = DB::select('select id, first_name, last_name from users where working_status = ? and (designation = ? OR designation = ?)', ['Working', 'Project Manager','MD']);
+        
+        $managers = [];
+        foreach($users as $usr){
+            $managers[$usr->id] ="{$usr->first_name} {$usr->last_name}";
+        }
+        
+        //echo'<pre>';
+        //print_r($managers);
+       // echo'</pre>';
+        //exit;
+        
+        //
+        return view('admin.editpro', compact('project', 'managers'));
+    }
+
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function update(Request $request, $id)
+    {
+        //
+        $this->validate($request, [
+            'project_name' => 'bail|required|unique:projects',
+            'project_name' => 'required',
+        ]);
+        
+        $project = Project::findOrFail($id);
+        
+        $project->project_name = $request->project_name;
+        $project->mail_to = $request->mail_to;
+        $project->mail_cc = $request->mail_cc;
+        $project->message = $request->message;
+        $project->dead_line = $request->dead_line;
+        $project->expected_start = $request->expected_start;
+        $project->complete_on = $request->complete_on;
+        $project->active = $request->active;
+        $project->remark = $request->remark;
+        $project->manager_id = $request->manager_id;
+        $project->save();
+        
+        return redirect(Route('projects.index'));
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy($id)
+    {
+        //
+    }
+    
+    
+    
+    public function dsr(Request $request, $pid=null)
+    {
+
+        if(isset($request->Delete) && $request->Delete=='Delete'){
+            if(count($request->deldsr)>0){
+                $a = Dsr::whereIn('id', $request->deldsr)->delete();
+            }
+        }
+        
+        $finalResult = [];
+        $finalResultTotal = [];
+        $grossTarget = [];
+        //
+        //$projects = Project::all()->sortBy("project_name");
+        $projects = Project::where('active','=', 1)->get()->sortBy("project_name");
+        
+        $requestData = [];
+        $requestData['project_id'] = isset($request->project_id) ? $request->project_id : $pid;
+        $requestData['groupBy'] = isset($request->groupBy) ? $request->groupBy : 'created_at';
+        $requestData['fromDate'] = isset($request->fromDate) ? $request->fromDate : date('Y-m-01');
+        $requestData['toDate'] = isset($request->toDate) ? $request->toDate : date('Y-m-d');
+        
+        
+        $allProjects = [];
+        foreach($projects as $project){
+            $allProjects[$project->id] = $project->project_name;
+        }
+        $groupBy = ['created_at'=>'Date','user_id'=>'Employee']; 
+        
+        
+        
+        
+        
+        if($requestData['project_id']!==null){
+            $dsrsObj = Dsr::with(['project','user'])->where('project_id', '=', $requestData['project_id']);
+
+            if($requestData['fromDate']!=null){
+                $dsrsObj = $dsrsObj->where('created_at', '>=', $requestData['fromDate']);
+            }
+            
+            if($requestData['toDate']!=null){
+                $dsrsObj = $dsrsObj->where('created_at', '<=', "{$requestData['toDate']} 23:60:59");
+            }
+            
+            if($requestData['groupBy']!==null){
+                //$dsrsObj = $dsrsObj->orderby($requestData['groupBy'],'desc')->get();
+                $dsrsObj = $dsrsObj->orderby($requestData['groupBy'],'desc')->orderby('created_at','desc')->get();
+            }
+
+            
+            $total = [];
+            $calTarget = [];
+            foreach($dsrsObj as $key => $dsr){
+                $aDsr = [];
+                $heading = [];
+                                
+                if($requestData['groupBy']=='created_at'){    
+                    //$sortBy = date('Y-m-d', strtotime($dsr->created_at));
+                    $sortBy = strtotime(date('Y-m-d', strtotime($dsr->created_at)));
+                }else{
+                    $sortBy = $dsr->user->id;
+                }
+                
+                $aDsr['id'] = $dsr->id;
+                $aDsr['emp_name'] = "{$dsr->user->first_name} {$dsr->user->last_name}";
+                $heading['emp_name'] = 'Employee Name';
+                $total[$sortBy]['emp_name'] = ''; 
+                
+                $aDsr['dateTime'] = date('F j, Y, g:i a', strtotime($dsr->created_at));;
+                $heading['dateTime'] = 'Date and Time';
+                $total[$sortBy]['dateTime'] = '';
+                                
+                $aDsr['send_at'] = date('g:i a', strtotime($dsr->created_at));
+                $heading['send_at'] = 'Sent DSR At';
+                $total[$sortBy]['send_at'] = '';
+                                
+                $aDsr['hours'] = date('G:i', mktime(0, $dsr->minutes));
+                $heading['hours'] = 'Hours Worked';
+                if(isset($total[$sortBy]['hours'])){
+                    $total[$sortBy]['hours'] = $total[$sortBy]['hours'] + $dsr->minutes;
+                }else{
+                    $total[$sortBy]['hours'] = $dsr->minutes;
+                }
+                                
+                $fields = Project::getDsrFields($dsr->project->message);
+                $dsrInfo = unserialize($dsr->details);
+                
+                //echo'<pre>';
+                //print_r($fields);
+                //echo'</pre>';
+                
+                //echo'<pre>';
+                //print_r($dsrInfo);
+                //echo'</pre>';
+                //exit;
+                
+                foreach($fields as $f){
+                    
+                    if(isset($f['field'])){
+                        if(isset($f['target'])){
+                            $target = "/ {$f['target']}";
+                            if(isset($calTarget[$sortBy][$f['field']])){
+                                $calTarget[$sortBy][$f['field']] = $calTarget[$sortBy][$f['field']] + $f['target'];
+                            }else{
+                                $calTarget[$sortBy][$f['field']] = $f['target'];
+                            }
+                        }else{
+                            $target = '';
+                        }
+                        $aDsr[$f['field']] = isset($dsrInfo[$f['field']]) ? "{$dsrInfo[$f['field']]} {$target}" : '';
+                        $heading[$f['field']] = $f['title'];
+                        
+                        if($f['type']=='number'){
+                            if(isset($total[$sortBy][$f['field']])){
+                                if(isset($dsrInfo[$f['field']])){
+                                    $total[$sortBy][$f['field']] = $total[$sortBy][$f['field']] + $dsrInfo[$f['field']];
+                                }
+                            }else{
+                                if(isset($dsrInfo[$f['field']])){    
+                                    $total[$sortBy][$f['field']] = $dsrInfo[$f['field']];
+                                }else{
+                                    $total[$sortBy][$f['field']] = 0;
+                                }
+                            }
+                        }else{
+                            $total[$sortBy][$f['field']] = '';
+                        }
+                    }
+                    
+                }
+                
+                $finalResult[$sortBy][] = $aDsr;
+                $finalResultTotal[$sortBy] = $total[$sortBy];
+                @$grossTarget[$sortBy] = $calTarget[$sortBy];
+            }
+        }
+        
+        
+
+		//************Grant Total**********************	        
+        $GrantResultTotal = array();
+        foreach($finalResultTotal as $sortKey => $ResultTotal ){
+			foreach($ResultTotal as $fieldKey => $aField){
+				if(is_numeric($aField)){
+					if(isset($GrantResultTotal[$fieldKey])){
+						$GrantResultTotal[$fieldKey] = $GrantResultTotal[$fieldKey] + $aField;
+					}else{
+						$GrantResultTotal[$fieldKey] = $aField;
+					}
+				}else{
+					$GrantResultTotal[$fieldKey] = '';
+				}
+			}
+		}
+        //************Grant Total**********************
+        //exit;
+        
+		
+		
+		krsort($finalResult);
+		
+		
+        return view('admin.dsr',compact('allProjects','groupBy','requestData','finalResult','heading','finalResultTotal','grossTarget', 'GrantResultTotal'));
+    }
+    
+    
+
+    
+    public function leaveupdate(Request $request){
+        /*
+        $response = array(
+            'status' => 'success'
+        );
+        return response()->json($response);
+        */ 
+        //------------------------
+        
+        
+        if(is_array($request->leave_id)){
+            $allLeaves = [];
+            foreach($request->leave_id as $key => $aLeave){
+                $allLeaves[$key]['leave_id'] = $aLeave;
+                $allLeaves[$key]['actiontaken'] = $request->actiontaken;
+            }
+        }else{
+            $allLeaves = [];
+            $allLeaves[0]['leave_id'] = $request->leave_id;
+            $allLeaves[0]['comment'] = $request->comment;
+            $allLeaves[0]['actiontaken'] = $request->actiontaken;
+        }
+        
+        //dd($allLeaves);
+        
+        foreach($allLeaves as $aleave){
+            $finalStatus = -1;
+            $user = Auth::user();
+            $leave = Leave_approval::with('leave')->where('leave_id','=',$aleave['leave_id'])->where('manager_id','=',$user->id)->first();
+            
+            if($leave!=NULL){
+                $leave->approved = $aleave['actiontaken'];
+                if(isset($aleave['comment'])){
+                    $leave->comment = $aleave['comment'];
+                }
+                $leave->save();
+            }
+            
+            $leavesManager = Leave_approval::with('leave','allManagers')->where('leave_id','=',$aleave['leave_id'])->get();
+            
+            
+            // 0-pending, 1-in process, 2-approved, 3-rejected, 4 cancelled
+            $statusFromAllManagers = [];
+            $chk4approved = true;
+            foreach($leavesManager as $leavesMan){
+                if($leavesMan->approved!=2){
+                    $chk4approved = false;
+                }
+                $statusFromAllManagers[] = $leavesMan->approved;
+            }
+            
+            
+            if(in_array(3, $statusFromAllManagers)){
+                $finalStatus =  3;
+            }elseif(in_array(4, $statusFromAllManagers)){
+                $finalStatus =  4;
+            }elseif(in_array(2, $statusFromAllManagers)){
+                $finalStatus =  1;
+            }
+            
+            if($chk4approved==true){
+                $finalStatus =  2;
+            }
+            
+    
+            
+            if($finalStatus>0){
+                $finalLeave = Leaves::findOrFail($aleave['leave_id']);
+                $finalLeave->status = $finalStatus;
+                $finalLeave->save();
+            }
+        }
+        
+        if($request->isAjaxCall){
+            return 1;
+        }
+        
+        if($request->fromPendingLeavPage==1){
+            return redirect('leave/requests');
+        }
+        
+        if($request->fromDashboard==1){
+            return redirect('admin/dashboard');
+        }
+        
+        return redirect('leave/browse');
+    }
+    
+    
+
+    public function leaverequests(){
+        
+        $user = Auth::user();
+        $leavesObj = Leave_approval::with('employee', 'leave','allManagers')->where('approved','<',2)->where('manager_id','=',$user->id)->orderby('created_at','desc')->get();
+        
+        
+        $Leave_categories = Leave_categories::all();
+        
+        $allCategories = [];
+        foreach($Leave_categories as $Leave_category){
+            $allCategories[$Leave_category->id] =$Leave_category->category_name;
+        }
+       // dd($allCategories);
+        //dd($leavesObj);
+
+        $data = [];
+        
+        
+        
+        foreach($leavesObj as $k => $aLeave){
+        
+            $data[$k]['leave_approval_id'] = $aLeave->id;
+            
+                $data[$k]['leave_id'] = $aLeave->leave->id;
+            
+            foreach($aLeave->employee as $emp){
+                
+                //dd($emp);
+                $data[$k]['user_id'] = $aLeave->leave->user_id;
+                $data[$k]['name'] = "$emp->first_name $emp->last_name";
+                $data[$k]['created_at'] = date('F j, Y, g:i a', strtotime($aLeave->leave->created_at));
+                $data[$k]['leave_from'] = date('F j, Y', strtotime($aLeave->leave->leave_from));
+                $data[$k]['leave_to'] = date('F j, Y', strtotime($aLeave->leave->leave_to));
+                $data[$k]['no_working_days'] = $aLeave->leave->no_working_days;
+
+                switch ($aLeave->leave->status) {
+                    case 0:
+                        $data[$k]['status'] = 'Pending';
+                        break;
+                    case 1:
+                        $data[$k]['status'] = 'In Process';
+                        break;
+                    case 2:
+                        $data[$k]['status'] = 'Approved';
+                        break;
+                    case 3:
+                        $data[$k]['status'] = 'Rejected';
+                        break;
+                    case 4:
+                        $data[$k]['status'] = 'Cancelled';
+                        break;
+                    default:
+                        $data[$k]['status'] = 'Pending';
+                }
+                $data[$k]['status_key'] = $aLeave->leave->status;
+                $data[$k]['category'] = $allCategories[$aLeave->leave->leave_category_id];
+                $data[$k]['type'] = $aLeave->leave->leave_type > 0 ? 'Pre' : 'Post';
+                
+                
+                $data[$k]['remark'] = '';
+                
+            }            
+  
+        }
+        
+//         echo'<pre>';
+//         print_r($data);
+//         echo'</pre>';
+        
+        
+        return view('admin.leaverequests', compact('data'));
+    }
+    
+    
+    
+    public function leavesAdvaceReport(Request $request){
+    
+        $requestData = [];
+        $requestData['month'] = isset($request->month) ? $request->month : date('m');
+        $requestData['year'] = isset($request->month) ? $request->year : date('Y');
+        
+        $leavesObj = Leaves_advance::with('employee');
+        
+        if($requestData['month']!=null){
+            $leavesObj = $leavesObj->where('month', '=', $requestData['month']);
+        }
+        
+        if($requestData['year']!=null){
+            $leavesObj = $leavesObj->where('year', '<=', $requestData['year']);
+        }
+        
+        
+        $leavesObj = $leavesObj->orderBy('emp_id')->get();
+        
+        //dd($leavesObj);
+        
+        
+        $data = [];
+        foreach($leavesObj as $k => $aLeave){
+            $data[$k]['emp_id'] = $aLeave->emp_id;
+            $data[$k]['employee'] = "{$aLeave->employee->first_name} {$aLeave->employee->last_name}";
+            $data[$k]['month'] = $aLeave->month;
+            $data[$k]['year'] = $aLeave->year;
+            $data[$k]['year'] = $aLeave->year;
+            $data[$k]['leaves'] = $aLeave->leaves;
+            $data[$k]['advance'] = $aLeave->advance;
+            $data[$k]['half_day'] = $aLeave->half_day;
+            $data[$k]['half_day_dates'] = $aLeave->half_day_dates;
+            $data[$k]['late_mark'] = $aLeave->late_mark;
+            $data[$k]['overtime'] = $aLeave->overtime;
+            $data[$k]['sent_at'] = $aLeave->created_at;
+        }
+        
+        //dd($data);
+        
+        //dd($requestData);
+        
+        
+        return view('admin.leavesAdvaceReport', compact('requestData','data'));
+    }
+    
+    public function empprojectwise(Request $request, $id=''){
+		
+		$heading = 'Employee(s)';
+		$allProjects = [];
+		$user = Auth::user();
+		
+		if($id!=''){
+			$selected_project_id = [$id];
+		}else{
+			$selected_project_id = [4, 831, 1280];
+		}
+		
+		if(isset($request->project_id) && $request->project_id!=''){
+			$selected_project_id = [$request->project_id];
+		}
+		
+		$employees = User::with('project')->where('working_status', '=', 'Working')->whereIn('project_id', $selected_project_id)->orderby('emp_id')->get();
+		
+		$managerName = [];
+		foreach($employees as $emp){
+		    if(!empty($emp->project->manager_id)){
+		        $manager = User::findOrFail($emp->project->manager_id);
+		        if(isset($manager->first_name)){
+		            $managerName[$emp->emp_id] = "$manager->first_name $manager->last_name";
+		        }
+		    }
+		}
+		
+		$TotalEmpOnProject = User::with('project')->where('working_status', '=', 'Working')->whereIn('project_id', $selected_project_id)->orderby('emp_id')->count();
+		
+		
+		 
+		 
+    	$projects = Project::with('manager')->where('active', '=', 1)->get();
+    	foreach($projects as $project){
+			$allProjects[$project->id] = $project->project_name;
+		}
+
+		$empOnProjects = DB::table('users')->where('working_status', '=', 'Working')->select('project_id', DB::raw('count(*) as totalemp'))->groupBy('project_id')->get();
+		$allEmpProject = [];
+		foreach ($empOnProjects as $empOnProject){
+		    $allEmpProject[$empOnProject->project_id] = $empOnProject->totalemp;
+		}
+		
+    	return view('admin.empprojectwise', compact('employees','managerName', 'allProjects','data','selected_project_id','TotalEmpOnProject','heading','allEmpProject'));
+	}
+	
+	
+	public function empprojectwisereport(Request $request, $id=''){
+	    
+	    $heading = 'Employee(s)';
+	    $allProjects = [];
+	    $user = Auth::user();
+
+	    
+	    $projects = Project::with('manager')->where('active', '=', 1)->orderby('project_name', 'asc')->get();
+	    $allProjects[0] = 'All Projects';
+	    foreach($projects as $project){
+	        $allProjects[$project->id] = $project->project_name;
+	        $getAllProjects[] = $project->id;
+	    }
+	    
+	    if($id!=''){
+	       $selected_project_id = [$id];
+	    }else{
+	        $selected_project_id = [4, 831, 1280];
+	        
+	        if(isset($request->project_id) && $request->project_id!=''){
+	           $selected_project_id = [$request->project_id];
+	        }
+	    }
+	    
+	    if(count($selected_project_id)==1 && $selected_project_id[0]==0){ 
+	    }else{
+	        $getAllProjects = $selected_project_id;
+	    }
+	    
+	    
+	    $finalData = [];
+	    
+	    foreach($getAllProjects as $aProject){
+	        $employees = User::with('project')->where('working_status', '=', 'Working')->whereIn('project_id', [$aProject])->orderby('emp_id')->get();
+    	    
+    	    $managerName = [];
+    	    foreach($employees as $emp){
+    	        if(!empty($emp->project->manager_id)){
+    	            $manager = User::findOrFail($emp->project->manager_id);
+    	            if(isset($manager->first_name)){
+    	                $managerName[$emp->emp_id] = "$manager->first_name $manager->last_name";
+    	            }
+    	        }
+    	    }
+    	    
+    	    $TotalEmpOnProject = User::with('project')->where('working_status', '=', 'Working')->whereIn('project_id', [$aProject])->orderby('emp_id')->count();
+    	    
+    	    $finalData[$aProject]['employees'] = $employees;
+    	    $finalData[$aProject]['TotalEmpOnProject'] = $TotalEmpOnProject;
+    	    $finalData[$aProject]['managerName'] = $managerName;
+	    }   
+    
+    	    
+	    $empOnProjects = DB::table('users')->where('working_status', '=', 'Working')->select('project_id', DB::raw('count(*) as totalemp'))->groupBy('project_id')->get();
+	    $allEmpProject = [];
+	    foreach ($empOnProjects as $empOnProject){
+	        $allEmpProject[$empOnProject->project_id] = $empOnProject->totalemp;
+	    }
+	        
+	    
+	    return view('admin.empprojectwisereport', compact('employees','allProjects','finalData','selected_project_id','heading','allEmpProject','user'));
+	}
+
+}

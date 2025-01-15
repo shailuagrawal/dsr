@@ -1,0 +1,396 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use App\Pc;
+use App\User;
+use App\Systemrequest;
+use App\Srcomment;
+
+class PcController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function index()
+    {
+        //
+        $pcs = Pc::all();
+        $pcWorking = Pc::where('machine_status', '=', 'Working')->get();
+        
+        $pcsoldDump = Pc::where('machine_status', '!=', 'Working')->get();
+        
+        $reports = [];
+        foreach($pcs as $pc){
+            $reports['status'][trim($pc['machine_status'])][] = $pc;
+            $reports['machine_location'][trim($pc['machine_location'])][] = $pc;
+            
+        }
+        
+                
+        
+        $info = [];
+        $info['totalPcs'] = Pc::all()->count();
+        $info['machinesWorking'] = Pc::where('machine_status', '=', 'Working')->count();
+        $info['UnderRepairing'] = Pc::where('machine_status', '=', 'Under Repairing')->count();
+        
+        $heading = "Total PCs ({$info['totalPcs']})";
+        $subheading = "List of Working PCs({$info['machinesWorking']}) and Under Repairing PCs({$info['UnderRepairing']})";
+        return view('admin.pcs', compact('pcs','pcWorking','pcsoldDump','heading','subheading','reports'));
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function create()
+    {
+        //
+        return view('admin.addpc');
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function store(Request $request)
+    {
+        //
+        $this->validate($request, [
+            'machine_no' => 'required',
+            'machine_name' => 'required',
+            'purchase_date' => 'required',
+        ]);
+        
+        //
+        $pc = new Pc();
+        
+        $driverFolder = trim(str_replace(' ', '_', $request->machine_name));
+        $pc->driver_files = $driverFolder;
+        
+        if ($request->file('driver_file1')!==null && $request->file('driver_file1')->isValid()) {
+            $driver_file1 = 'PC_'.$request->machine_no.'_driver1.'.$request->file('driver_file1')->extension();
+            $request->file('driver_file1')->move('drivers/'.$driverFolder, $driver_file1);
+        }
+        if ($request->file('driver_file2')!==null && $request->file('driver_file2')->isValid()) {
+            $driver_file2 = 'PC_'.$request->machine_no.'_driver2.'.$request->file('driver_file2')->extension();
+            $request->file('driver_file2')->move('drivers/'.$driverFolder, $driver_file2);
+        }
+        if ($request->file('driver_file3')!==null && $request->file('driver_file3')->isValid()) {
+            $driver_file3 = 'PC_'.$request->machine_no.'_driver3.'.$request->file('driver_file3')->extension();
+            $request->file('driver_file3')->move('drivers/'.$driverFolder, $driver_file3);
+        }
+        $pc->machine_no = $request->machine_no;
+        $pc->machine_name = $request->machine_name;
+        $pc->purchase_date = $request->purchase_date;
+        $pc->machine_location = $request->machine_location;
+        $pc->machine_status = $request->machine_status;
+        $pc->processor_info = $request->processor_info;
+        $pc->motherboard_info = $request->motherboard_info;
+        $pc->ram_total = $request->ram_total;
+        $pc->ram_slot1 = $request->ram_slot1;
+        $pc->ram_slot2 = $request->ram_slot2;
+        $pc->ram_type = $request->ram_type;
+        $pc->harddisk_size = $request->harddisk_size;
+        $pc->harddisk_partition = $request->harddisk_partition;
+        $pc->monitor_info = $request->monitor_info;
+        $pc->comment = $request->comment;
+        $pc->description_system_driver = $request->description_system_driver;
+        
+        $pc->save();
+        
+        return redirect(Route('pcs.index'));
+    }
+
+    /**
+     * Display the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function show($id)
+    {
+        //
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function edit($id)
+    {
+        //
+        $pc = Pc::findOrFail($id);
+        
+ 
+        $srHistory = Systemrequest::with('forPc','requestedBy')->where('pc_id', '=', $id)->orderby('created_at', 'desc')->get();
+        
+        
+        
+        
+        
+        return view('admin.editpc', compact('pc','srHistory'));
+    }
+
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function update(Request $request, $id)
+    {
+        //
+        $this->validate($request, [
+            'machine_no' => 'required',
+            'machine_name' => 'required',
+            'purchase_date' => 'required',
+        ]);
+
+        $pc = Pc::findOrFail($id);
+ 
+        $driverFolder = trim(str_replace(' ', '_', $request->machine_name));
+        $pc->driver_files = $driverFolder;
+        
+        if ($request->file('driver_file1')!==null && $request->file('driver_file1')->isValid()) {
+            $driver_file1 = 'PC_'.$request->machine_no.'_driver1.'.$request->file('driver_file1')->extension();
+            $request->file('driver_file1')->move('drivers/'.$driverFolder, $driver_file1);
+        }
+        if ($request->file('driver_file2')!==null && $request->file('driver_file2')->isValid()) {
+            $driver_file2 = 'PC_'.$request->machine_no.'_driver2.'.$request->file('driver_file2')->extension();
+            $request->file('driver_file2')->move('drivers/'.$driverFolder, $driver_file2);
+        }
+        if ($request->file('driver_file3')!==null && $request->file('driver_file3')->isValid()) {
+            $driver_file3 = 'PC_'.$request->machine_no.'_driver3.'.$request->file('driver_file3')->extension();
+            $request->file('driver_file3')->move('drivers/'.$driverFolder, $driver_file3);
+        }
+        $pc->machine_no = $request->machine_no;
+        $pc->machine_name = $request->machine_name;
+        $pc->purchase_date = $request->purchase_date;
+        $pc->machine_location = $request->machine_location;
+        $pc->machine_status = $request->machine_status;
+        $pc->processor_info = $request->processor_info;
+        $pc->motherboard_info = $request->motherboard_info;
+        $pc->ram_total = $request->ram_total;
+        $pc->ram_slot1 = $request->ram_slot1;
+        $pc->ram_slot2 = $request->ram_slot2;
+        $pc->ram_type = $request->ram_type;
+        $pc->harddisk_size = $request->harddisk_size;
+        $pc->harddisk_partition = $request->harddisk_partition;
+        $pc->monitor_info = $request->monitor_info;
+        $pc->comment = $request->comment;
+        $pc->description_system_driver = $request->description_system_driver;
+        
+        
+        
+        $pc->save();
+        
+        return redirect(Route('pcs.index'));
+        
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy($id)
+    {
+        //
+    }
+    
+    
+    public function srRequest(){
+     
+        $pcsObj = Pc::where('machine_status', '=', 'Working')->get();
+        
+        $pcs = [];
+        $pcs[''] = 'Select Machine';
+        foreach($pcsObj as $aPc){
+            $pcs[$aPc->id] = $aPc->machine_name;
+        }
+        $locations = [""=>"Select Location", 
+                        "Unity Hall"=> "Unity Hall", 
+                        "Integrity Hall" => "Integrity Hall", 
+                        "Account Room" => "Account Room",
+                        "Gulmohar" => "Gulmohar", 
+                        "Hall 1" => "Hall 1", 
+                        "Hall 2" => "Hall 2", 
+                        "Hall 3" => "Hall 3", 
+                        "Hall 4" => "Hall 4", 
+                        "Reception" => "Reception", 
+                        "SPA Cabin" => "SPA Cabin", 
+                        "Server Room" => "Server Room", 
+                        "None" => "None"];
+        $RequestArea = [""=>"Select Request Area" , 
+            "Hardware" => "Hardware", 
+            "Software" => "Software", 
+            "Power" => "Power", 
+            "Network" => "Network", 
+            "Office infrastructure" => "Office infrastructure", 
+            "Other" => "Other"];
+       
+        
+        return view('user.systemrequest', compact('pcs', 'locations','RequestArea'));
+    }
+
+    
+    public function srhistory(Request $request)
+    {
+        $user = Auth::user();
+        $srHistory = Systemrequest::with('forPc')->where('user_id','=',$user->id)->orderby('created_at', 'desc')->get();
+        
+        
+        return view('user.srhistory', compact('pcs', 'srHistory'));
+    }
+
+    public function srbrowser(Request $request)
+    {
+        
+        $requestData = [];
+        $requestData['fromDate'] = isset($request->fromDate) ? $request->fromDate : date('Y-m-d', strtotime("-30 days"));
+        $requestData['toDate'] = isset($request->toDate) ? $request->toDate : date('Y-m-d')." 24:59:59";
+        
+        $user = Auth::user();
+
+        $srHistory = Systemrequest::with('forPc','requestedBy');
+        
+        
+        if($requestData['fromDate']!=null){
+            $srHistory = $srHistory->where('created_at', '>=', $requestData['fromDate']);
+        }
+        
+        if($requestData['toDate']!=null){
+            $srHistory = $srHistory->where('created_at', '<=', $requestData['toDate']);
+        }
+        
+        $srHistory = $srHistory->orderby('created_at', 'desc')->get();
+        
+        
+        return view('admin.srbrowser', compact('pcs', 'srHistory','requestData'));
+    }
+    
+    
+    
+    public function storesr(Request $request)
+    {
+        $user = Auth::user();
+        
+        $this->validate($request, [
+            'pc_id' => 'required',
+            'location' => 'required',
+            'request_area' => 'required',
+        ]);
+
+        
+        $sr = new Systemrequest();
+        
+        $sr->pc_id = $request->pc_id;
+        $sr->location = $request->location;
+        $sr->request_area = $request->request_area;
+        $sr->detail = $request->detail;
+        $sr->verbally_notified_to = $request->verbally_notified_to;
+        $sr->user_id = $user->id;
+        $sr->save();
+        
+        return redirect('srrequest/history');
+    }
+    
+    
+    
+    public function srdetail(Request $request){
+        
+        $user = Auth::user();
+
+        $sysObj = Systemrequest::with('forPc','requestedBy')->where('id','=',$request->id)->first();
+        
+        
+        if(!isset($request->id) || $request->id<0){
+        exit;
+        }
+        
+        
+        if(isset($request->_token)){
+            
+            if(isset($request->status) && $user->role_id==1){
+                if($sysObj->status!=$request->status){
+                    $sr = Systemrequest::findOrFail($request->id);
+                    $sr->status = $request->status;
+                    $sr->save();
+                }    
+            }
+            
+            
+            if($request->comment!=''){
+                $srCom = new Srcomment();
+                $srCom->comment = $request->comment;
+                
+                if(isset($request->status)){
+                    $srCom->status = $request->status;
+                }
+                $srCom->systemrequest_id = $request->id;
+                $srCom->user_id = $user->id;
+                $srCom->save();
+            }
+            
+            return redirect("/srrequest/detail/{$request->id}");
+        }
+        
+        
+        
+              
+        $pcsObj = Pc::where('machine_status', '=', 'Working')->get();
+        
+        $pcs = [];
+        $pcs[''] = 'Select Machine';
+        foreach($pcsObj as $aPc){
+            $pcs[$aPc->id] = $aPc->machine_name;
+        }
+        $locations = [""=>"Select Location",
+            "Unity Hall"=> "Unity Hall",
+            "Integrity Hall" => "Integrity Hall",
+            "Account Room" => "Account Room",
+            "Gulmohar" => "Gulmohar",
+            "Hall 1" => "Hall 1",
+            "Hall 2" => "Hall 2",
+            "Hall 3" => "Hall 3",
+            "Hall 4" => "Hall 4",
+            "Reception" => "Reception",
+            "SPA Cabin" => "SPA Cabin",
+            "Server Room" => "Server Room",
+            "None" => "None"];
+        
+        $RequestArea = [""=>"Select Request Area" ,
+            "Hardware" => "Hardware",
+            "Software" => "Software",
+            "Power" => "Power",
+            "Network" => "Network",
+            "Office infrastructure" => "Office infrastructure",
+            "Other" => "Other"];
+        
+        $allStatus = [];
+        $allStatus[0] = 'Pending';
+        $allStatus[1] = 'In Process';
+        $allStatus[2] = 'Solved';
+        $allStatus[4] = 'Close';
+        
+        
+        $srComObj = Srcomment::with('forSR','commentBy')->where('systemrequest_id','=',$request->id)->get();
+        
+        
+        return view('user.srdetail', compact('pcs', 'locations','RequestArea','sysObj','allStatus','srComObj'));
+    }
+    
+    
+}

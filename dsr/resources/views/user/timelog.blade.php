@@ -1,0 +1,109 @@
+@extends('layouts.app')
+
+
+
+
+@section('content')
+<style>
+.fc-month-button,.fc-agendaWeek-button,.fc-agendaDay-button,.fc-listWeek-button{
+	visibility:hidden;
+}
+</style>
+<div class="row">
+                <div class="col-lg-12">
+                    <h3 class="page-header">Time Log - {{$userObj->first_name}} {{$userObj->last_name}}</h3>
+                    <h4 style="text-align:right;color:red;"><span id="late">0</span> Day(s) late in this month.</h4>
+                </div>
+                <!-- /.col-lg-12 -->
+            </div>
+            <!-- /.row -->
+            <div class="row">
+                <div class="col-lg-12">
+                    
+
+
+                  <div id='loading'>loading...</div>
+                
+                  <div id='calendar'></div>
+
+
+
+                </div>
+                <!-- /.col-lg-12 -->
+            </div>
+            <!-- /.row -->
+
+
+
+@endsection
+
+
+@section('calender')
+<meta charset='utf-8' />
+<link href='{{url('/')}}/vendor/fullcalendar/fullcalendar.min.css' rel='stylesheet' />
+<link href='{{url('/')}}/vendor/fullcalendar/fullcalendar.print.min.css' rel='stylesheet' media='print' />
+<script src='{{url('/')}}/vendor/fullcalendar/lib/moment.min.js'></script>
+<script src='{{url('/')}}/vendor/fullcalendar/fullcalendar.min.js'></script>
+<script>
+
+<!-- 
+  $(document).ready(function() {
+
+	  $('#calendar').fullCalendar({
+	      header: {
+	        left: 'prev,next today',
+	        center: 'title',
+	        right: 'month,agendaWeek,agendaDay,listWeek'
+	      },
+	      defaultDate: '<?php echo date('Y-m-d');?>',
+	      showNonCurrentDates:false,
+	      editable: false,
+	      navLinks: false, // can click day/week names to navigate views
+	      eventLimit: false, // allow "more" link when too many events
+	      
+	      events: {
+	        url: '{{url('/')}}/ajax/user/timelog/<?php echo $id; ?>',
+	        error: function() {
+	          $('#script-warning').show();
+	        },
+	       
+	          
+	      },
+	      loading: function(bool) {
+	        $('#loading').toggle(bool);
+	      }
+	    });
+
+
+		$(".fc-prev-button, .fc-next-button, .fc-today-button").click(function(){
+			var m;
+			m = $( "div.fc-center" ).text();
+			
+			$.ajax({url: "{{url('/')}}/ajax/get/latemark/?month="+m+"&user_id="+<?php echo $id; ?>, success: function(result){
+				$("#late").html(result);
+			}});
+		});
+	  
+			var m;
+			m = $( "div.fc-center" ).text();
+			
+			$.ajax({url: "{{url('/')}}/ajax/get/latemark/?month="+m+"&user_id="+<?php echo $id; ?>, success: function(result){
+				$("#late").html(result);
+			}});
+			
+	  
+	  });
+	  
+	  
+	  
+	  
+	  
+	  
+
+-->
+
+
+
+</script>
+
+@endsection

@@ -1,0 +1,2117 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
+use App\User;
+use App\Role;
+use App\Advance;
+use Illuminate\Support\Facades\Hash;
+use App\Project;
+use App\Dsr;
+use DB;
+use App\Leaves;
+use App\Timelog;
+use App\Leave_approval;
+use App\leaverevision;
+use App\Leave_categories;
+use App\Leaves_advance;
+use Mockery\Generator\Parameter;
+use PHPUnit\Framework\MockObject\Matcher\Parameters;
+use phpDocumentor\Reflection\DocBlock\Serializer;
+use PhpParser\Node\Expr\FuncCall;
+use PhpOffice\PhpSpreadsheet\Reader\Xls;
+use Symfony\Component\CssSelector\Parser\Reader;
+use Illuminate\Support\Facades\Response;
+use App\Systemrequest;
+use PhpOffice\PhpSpreadsheet\Reader\Xlsx;
+
+class UserController extends Controller
+{
+    //
+    public function __construct()
+    {
+        $this->middleware('auth');
+    }
+    
+
+   
+    public function index()
+    {
+        $user = Auth::user();
+        $userProject = User::with('project')->where('id', '=', $user->id)->get();
+        
+        $allProjects = Project::where('active','=',1)->orderby('project_name')->get();
+        
+        $project = $userProject[0]->project()->first();
+        
+        $projectInfo = $project;
+        
+        
+        $projectfields = Project::getDsrFields($projectInfo->message);
+
+        
+        //*****************************************
+        $dt = date('Y-m-d H:i:s', strtotime('-1 week'));
+        $sr = Systemrequest::where('updated_at','>',$dt)->where('user_id','=',$user->id)->get();
+        
+        
+        $dt1 = date('Y-m-d H:i:s');
+        $leaves = Leaves::where('leave_from','>=',$dt)->where('user_id','=',$user->id)->get();
+        
+        //*****************************************
+        $placeholder_subject = "DSR - ".$user->first_name." ".$user->last_name." ".date('d-m-Y'); 
+        
+        return view('user.index', compact('projectInfo', 'projectfields','allProjects','sr','leaves','placeholder_subject'));
+        
+    }    
+
+ 
+
+    public function projectinfo($id){
+        
+        
+        $project = Project::whereId($id)->first();
+        
+        $projectfields = Project::getDsrFields($project->message);;
+        
+        $allInfo = [];
+        if(!empty($project)){
+            $allInfo['project'] = $project;
+        }
+        if(!empty($projectfields)){
+            $allInfo['projectfields'] = $projectfields;
+        }
+        
+        if(count($allInfo)>0){
+            $myJSON = json_encode($allInfo);
+        }else{
+            $myJSON = false;
+        }
+                
+        return $myJSON;
+    }
+    
+    
+    
+    
+    public function profile($s=0)
+    {
+        //$loggedInUser = Auth::user();
+        //$user = User::findOrFail($loggedInUser->id);
+        
+        $user = Auth::user();
+        
+        $allprojects = DB::table('projects')->where('active', '=', 1)->orderby('project_name')->get();
+        $projects = [];
+        foreach($allprojects as $aproject){
+            $projects[$aproject->id] =$aproject->project_name;
+        }
+        
+        $roles = [];
+        $allroles = Role::all();
+        foreach($allroles as $role){
+            $roles[$role->id] = $role->name;
+        }
+        
+        $msg ="";
+        if($s){
+            $msg ="Your profile updated successfully !!";
+        }
+        //
+        return view('user.profile', compact('user', 'projects', 'roles','msg'));
+        
+    }
+    
+
+    public function updateprofile(Request $request)
+    {
+        $loggedInUser = Auth::user();
+        $id = $loggedInUser->id;
+
+        //
+        if($loggedInUser->role_id==1){
+            $this->validate($request, [
+                'first_name' => 'required|max:255',
+                'last_name' => 'required|max:255',
+            ]);
+        }
+        //
+        
+        $user = User::findOrFail($id);
+        
+        if ($request->file('photo') && $request->file('photo')->isValid()) {
+            $user->photo = 'emp_'.$id.'.'.$request->file('photo')->extension();
+            $request->file('photo')->move('images/employees', $user->photo);
+        }
+        
+        $user->address = $request->address;
+        $user->mobile_number = $request->mobile_number;
+        $user->landline_number = $request->landline_number;
+        $user->other_contact = $request->other_contact;
+        if($request->password!=''){
+            $user->password = Hash::make($request->password);
+        }
+        $user->personal_email = $request->personal_email;
+
+        if($loggedInUser->role_id==1){
+            $user->first_name = $request->first_name;
+            $user->middle_name = $request->middle_name;
+            $user->last_name = $request->last_name;
+            $user->dob = $request->dob;
+            $user->sex = $request->sex;
+            $user->city = $request->city;
+            $user->blood_group = $request->blood_group;
+            $user->qualification = $request->qualification;
+            $user->computer_skill = $request->computer_skill;
+            $user->other_skill_experience = $request->other_skill_experience;
+            $user->total_experience = $request->total_experience;
+            $user->pre_employer = $request->pre_employer;
+            $user->typing_speed = $request->typing_speed;
+            $user->addition_skill_english = $request->addition_skill_english;
+            $user->addition_skill_html = $request->addition_skill_html;
+            $user->addition_skill_photoshop = $request->addition_skill_photoshop;
+            $user->addition_skill_php = $request->addition_skill_php;
+            $user->addition_skill_typing = $request->addition_skill_typing;
+            $user->addition_skill_webresearch = $request->addition_skill_webresearch;
+            $user->user_name = $request->user_name;
+            $user->designation = $request->designation;
+            $user->date_of_joining = $request->date_of_joining;
+            $user->email = $request->email;
+            $user->role_id = $request->role_id;
+            $user->working_status = $request->working_status;
+            $user->login_info = $request->login_info;
+            $user->remark = $request->remark;
+            $user->company_left_on = $request->company_left_on;
+            $user->leave_allotted = $request->leave_allotted;
+            $user->leave_forwarded = $request->leave_forwarded;
+            $user->other_leave = $request->other_leave;
+            $user->ready_for_night_shift = $request->ready_for_night_shift;
+            $user->working_on_shift = $request->working_on_shift;
+            $user->project_id = $request->project_id;
+        }
+        $user->save();
+        
+        
+        
+        return redirect('/user/profile/1');
+    }
+    
+    
+    public function listdsr(Request $request, $id='')
+    {
+        $userID = '';
+        $user = Auth::user();
+
+        if($id!=''){
+            $userID = $id;
+        }else{
+            $userID = $user->id;
+        }
+        
+        $dataForUser = User::findOrfail($userID);
+        
+       
+        $dsrs = Dsr::with('project')->where('user_id', '=', $userID);
+
+
+        $requestData = [];
+        $requestData['fromDate'] = isset($request->fromDate) ? $request->fromDate : date('Y-m-d', strtotime("-30 days"));
+        $requestData['toDate'] = isset($request->toDate) ? $request->toDate : date('Y-m-d')." 24:59:59";
+        
+                
+         if($requestData['fromDate']!=null){
+             $dsrs = $dsrs->where('created_at', '>=', $requestData['fromDate']);
+         }
+         
+         if($requestData['toDate']!=null){
+             $dsrs = $dsrs->where('created_at', '<=', $requestData['toDate']);
+         }
+        
+         $dsrs = $dsrs->orderby('created_at','desc')->get();
+        
+         //dd($dsrs);
+        
+        $allDsrs = []; 
+        $totalHours = 0;
+        foreach($dsrs as $k => $dsr){
+            $allDsrs[$k]['id'] = $dsr->id;
+            $allDsrs[$k]['project_name'] = $dsr->project->project_name;
+            $allDsrs[$k]['created_at'] = date("F j, Y, g:i a", strtotime($dsr->created_at));
+            $allDsrs[$k]['hours'] = date('G:i', mktime(0, $dsr->minutes));
+            $allDsrs[$k]['subject'] = $dsr->subject;
+            $totalHours = $totalHours + $dsr->minutes;
+        }
+        
+       	$hours = floor($totalHours / 60);
+	   	$min = $totalHours - ($hours * 60);
+        $totalHoursDisplay = $hours.":".$min;
+        
+        return view('user.listdsr', compact('allDsrs', 'totalHoursDisplay','requestData','userID','dataForUser'));
+        
+    }
+    
+  
+    public function dsrdetail($id){
+    
+        $dsr = Dsr::with('project')->where('id', '=', $id)->first();
+        
+        $dsrDetail = [];
+        $dsrDetail['project_name'] = $dsr->project->project_name;
+        $dsrDetail['hours'] = date('G:i', mktime(0, $dsr->minutes));
+        $dsrDetail['created_at'] = date("F j, Y, g:i a", strtotime($dsr->created_at));
+
+        $dsrInfo = unserialize($dsr->details);
+        
+
+    
+        $projectfields = Project::getDsrFields($dsr->project->message);;
+        
+        
+        return view('user.dsrdetail', compact('dsrDetail', 'projectfields', 'dsrInfo'));
+    }
+    
+
+    
+    public function saveleave(Request $request){
+        $userInput = $request->all();
+
+        $this->validate($request, [
+            'leave_from' => 'required',
+            'leave_to' => 'required',
+            'no_working_days' => 'required',
+            'reason' => 'required',
+        ]);
+
+        
+        $user = Auth::user();
+        
+        $oldData = array();
+        $oldData['original'] = array();
+        $oldData['updated'] = array();
+        
+        if(isset($userInput['leave_id']) && $userInput['leave_id']>0){
+            $leave = Leaves::findOrFail($userInput['leave_id']);
+            
+            $oldData['original']['leave_from'] = $leave->leave_from;
+            $oldData['original']['leave_to'] = $leave->leave_to;
+            $oldData['original']['no_working_days'] = $leave->no_working_days;
+            $oldData['original']['reason'] = $leave->reason;
+            $oldData['original']['leave_category_id'] = $leave->leave_category_id;
+            
+        }else{
+            $leave = new Leaves();
+            $leave->user_id = $user->id;
+        }
+       
+        $leave->leave_from = $userInput['leave_from'];
+        $leave->leave_to = $userInput['leave_to'];
+        $leave->no_working_days = $userInput['no_working_days'];
+        $leave->reason = $userInput['reason'];
+        $leave->leave_category_id = $userInput['leave_category_id'];
+
+        $today = strtotime(date('Y-m-d'));
+        $leave_from = strtotime($userInput['leave_from']);
+        
+        if($today > $leave_from){
+            $leave->leave_type = 0;
+        }
+        
+        $leave->save();
+
+        
+        if($leave->id > 0){
+            if(!isset($userInput['leave_id'])){
+                foreach($userInput['managers'] as $manager_id){ 
+                    $leave_approve = new Leave_approval();
+                    $leave_approve->leave_id = $leave->id;
+                    $leave_approve->manager_id = $manager_id;
+                    $leave_approve->save();
+                }
+            }else{
+                
+                $oldData['updated']['leave_from'] = $leave->leave_from;
+                $oldData['updated']['leave_to'] = $leave->leave_to;
+                $oldData['updated']['no_working_days'] = $leave->no_working_days;
+                $oldData['updated']['reason'] = $leave->reason;
+                $oldData['updated']['leave_category_id'] = $leave->leave_category_id;
+                
+                
+                //if(serialize($oldData['original'])!=serialize($oldData['updated'])){
+                    
+                    $leave_approve = Leave_approval::where('leave_id','=', $userInput['leave_id'])->get();
+                    
+                    foreach($leave_approve as $leave_app){ 
+                        $leaveAp = Leave_approval::findOrFail($leave_app['id']);
+                        $leaveAp->approved = 0;
+                        $leaveAp->save();
+                    }
+                    
+                    $leave1 = Leaves::findOrFail($userInput['leave_id']);
+                    $leave1->status = 0;
+                    $leave1->save();
+                    
+
+                    $leave_revision = new leaverevision();
+                    $leave_revision->leave_id = $userInput['leave_id'];
+                    $leave_revision->differences = serialize($oldData);
+                    $leave_revision->save();
+                   
+                //}
+                   
+            }
+        }
+        return redirect('/user/leaves');
+    }
+    
+    
+    
+    public function savedsr(Request $request){
+        
+        $userInput = $request->all();
+        
+                
+        $requiredData = [];
+        foreach($userInput['project'] as $k => $p){
+            $requiredData["project[$k][hours_worked]"] = 'required';
+        }
+        
+        /*
+        $this->validate($request, [
+            'hours_worked' => 'required',
+        ]);
+        */
+
+        foreach($userInput['project'] as $aProject){
+            
+            $details = $aProject;
+            
+            unset($details['project_id']);
+            unset($details['hours_worked']);
+            unset($details['min_worked']);
+            unset($details['_token']);
+            
+            //
+            $user = Auth::user();
+            $dsr = new Dsr();
+            
+            $dsr->user_id = $user->id;
+            $dsr->project_id = $aProject['project_id'];
+            $totalMinutes = 0;
+            if($aProject['hours_worked'] > 0){
+                $totalMinutes = $totalMinutes + ($aProject['hours_worked'] * 60);
+            }
+            if($aProject['min_worked'] > 0){
+                $totalMinutes = $totalMinutes + $aProject['min_worked'];
+            }
+            $dsr->minutes = $totalMinutes;
+            
+            $dsr->subject = $aProject['subject'];
+            
+            $dsr->details = serialize($details);
+            
+             
+            $dsr->save();
+        }
+        
+        return redirect('/user/listdsr');
+    }
+    
+    
+    public function leaves(Request $request, $id=''){
+    
+        $user = Auth::user();
+
+        if(!isset($id) || $id==''){
+            $id = $user->id;
+        }
+        
+        $requestData = [];
+        $requestData['fromDate'] = isset($request->fromDate) ? $request->fromDate : date('Y-m-d', strtotime("-30 days"));
+        $requestData['toDate'] = isset($request->toDate) ? $request->toDate : date('Y-m-d')." 12:59:59";
+        
+        $leavesObj = Leaves::with('approval','leave_category','managerAppproval')->where('user_id','=',$id);
+
+           /* 
+        if($requestData['fromDate']!=null){
+            $leavesObj = $leavesObj->where('created_at', '>=', $requestData['fromDate']);
+        }
+        
+        if($requestData['toDate']!=null){
+            $leavesObj = $leavesObj->where('created_at', '<=', $requestData['toDate']);
+        }
+        */
+        
+        $leavesObj = $leavesObj->orderBy('created_at','desc')->get();
+        
+        
+        $data = [];
+        
+        foreach($leavesObj as $k => $aLeave){
+            
+            $data[$k]['id'] = $aLeave->id;
+            $data[$k]['created_at'] = date('F j, Y, g:i a', strtotime($aLeave->created_at));
+            $data[$k]['leave_from'] = date('F j, Y', strtotime($aLeave->leave_from));
+            $data[$k]['leave_to'] = date('F j, Y', strtotime($aLeave->leave_to));
+            $data[$k]['no_working_days'] = $aLeave->no_working_days;
+            
+            
+            switch ($aLeave->status) {
+                case 0:
+                    $data[$k]['status'] = 'Pending';
+                    break;
+                case 1:
+                    $data[$k]['status'] = 'In Process';
+                    break;
+                case 2:
+                    $data[$k]['status'] = 'Approved';
+                    break;
+                case 3:
+                    $data[$k]['status'] = 'Rejected';
+                    break;
+                case 4:
+                    $data[$k]['status'] = 'Cancelled';
+                    break;
+                default:
+                    $data[$k]['status'] = 'Pending';
+            }
+            
+            $data[$k]['status_key'] = $aLeave->status;
+            $data[$k]['category'] = $aLeave->leave_category->category_name;
+            $data[$k]['type'] = $aLeave->leave_type > 0 ? 'Pre' : 'Post';
+            
+            
+            $data[$k]['remark'] = '';
+            foreach($aLeave->approval as $k2 => $app){
+                
+                $projectManager = $leavesObj[$k]->managerAppproval[$k2];
+                
+                switch ($app->approved) {
+                    case 0:
+                        //$data[$k]['remark'] = 'Pending';
+                        $data[$k]['remark'] = '';
+                        break;
+                    case 1:
+                        //$data[$k]['remark'] = 'In Process';
+                        $data[$k]['remark'] = '';
+                        break;
+                    case 2:
+                        $data[$k]['remark'].= "By {$projectManager->first_name} {$projectManager->last_name} (Approved)<br>";
+                        break;
+                    case 3:
+                        $data[$k]['remark'].= "By {$projectManager->first_name} {$projectManager->last_name} (Rejected)<br>";
+                        break;
+                    case 4:
+                        $data[$k]['remark'].= "By {$projectManager->first_name} {$projectManager->last_name} (Cancelled)<br>";
+                        break;
+                    default:
+                        $data[$k]['remark'] = 'Pending';
+                }
+            }
+            
+            $data[$k]['id'] = $aLeave->id;
+        }
+        
+        //dd($data);
+        
+        return view('user.leaves', compact('data','requestData'));
+    }
+
+    
+    public function leavebrowse(Request $request){
+
+        $userInput = $request->all();
+
+        $requestData = [];
+        $requestData['fromDate'] = isset($request->fromDate) ? $request->fromDate : date('Y-m-d', strtotime("-30 days"));
+        //$requestData['toDate'] = isset($request->toDate) ? $request->toDate : date('Y-m-d')." 12:59:59";
+        $requestData['toDate'] = isset($request->toDate) ? $request->toDate : date('Y-m-d');
+        
+        $leavesObj = Leaves::with('approval','leave_category','managerAppproval','foruser');
+        //$leavesObj = Leaves::with('approval','leave_category');
+        
+        if($requestData['fromDate']!=null){
+            $leavesObj = $leavesObj->where('created_at', '>=', $requestData['fromDate']);
+        }
+        
+        if($requestData['toDate']!=null){
+            $leavesObj = $leavesObj->where('created_at', '<=', $requestData['toDate']." 12:59:59");
+        }
+        
+       
+        $leavesObj = $leavesObj->orderBy('created_at','desc')->get();
+        
+      
+        $data = [];
+        
+        
+        
+        foreach($leavesObj as $k => $aLeave){
+            
+           // dd($aLeave);
+            
+            $data[$k]['id'] = $aLeave->id;
+            $data[$k]['employee_id'] = $aLeave->foruser->id;
+            $data[$k]['employee'] = "{$aLeave->foruser->first_name} {$aLeave->foruser->last_name}";
+            $data[$k]['created_at'] = date('F j, Y, g:i a', strtotime($aLeave->created_at));
+            $data[$k]['leave_from'] = date('F j, Y', strtotime($aLeave->leave_from));
+            $data[$k]['leave_to'] = date('F j, Y', strtotime($aLeave->leave_to));
+            $data[$k]['no_working_days'] = $aLeave->no_working_days;
+            
+            
+            switch ($aLeave->status) {
+                case 0:
+                    $data[$k]['status'] = 'Pending';
+                    break;
+                case 1:
+                    $data[$k]['status'] = 'In Process';
+                    break;
+                case 2:
+                    $data[$k]['status'] = 'Approved';
+                    break;
+                case 3:
+                    $data[$k]['status'] = 'Rejected';
+                    break;
+                case 4:
+                    $data[$k]['status'] = 'Cancelled';
+                    break;
+                default:
+                    $data[$k]['status'] = 'Pending';
+            } 
+            $data[$k]['status_key'] = $aLeave->status;
+            $data[$k]['category'] = $aLeave->leave_category->category_name;
+            $data[$k]['type'] = $aLeave->leave_type > 0 ? 'Pre' : 'Post';
+
+            
+            $data[$k]['remark'] = '';
+            
+            
+            foreach($aLeave->approval as $k2 => $app){
+                
+                $projectManager = $leavesObj[$k]->managerAppproval[$k2];
+                
+                // 0-pending, 1-in process, 2-approved, 3-rejected, 4 cancelled
+                
+                switch ($app->approved) {
+                    case 0:
+                        //$data[$k]['remark'].= 'Pending<br>';
+                        $data[$k]['remark'].= '';
+                        break;
+                    case 1:
+                        //$data[$k]['remark'].= 'In Process<br>';
+                        $data[$k]['remark'].= '';
+                        break;
+                    case 2:
+                        $data[$k]['remark'].= "By {$projectManager->first_name} {$projectManager->last_name} (Approved)<br>";
+                        break;
+                    case 3:
+                        $data[$k]['remark'].= "By {$projectManager->first_name} {$projectManager->last_name} (Rejected)<br>";
+                        break;
+                    case 4:
+                        $data[$k]['remark'].= "By {$projectManager->first_name} {$projectManager->last_name} (Cancelled)<br>";
+                        break;
+                    default:
+                        $data[$k]['remark'] = 'Pending';
+                }
+            }
+            
+            $data[$k]['id'] = $aLeave->id;
+        }
+        
+        
+        return view('user.leavebrowse', compact('data','requestData'));
+    }
+    
+    
+    
+    public function leaverequest(){
+        
+        $otherinfo = [];
+        global $user;
+        $user = Auth::user();
+
+        
+        //*******************************************Leave Quota**********************************************************start
+        
+        $userLeaveHistory = $this->getUserLeaveQuota($user->id);
+ 
+        
+        //******************************************************************************************************************end
+        
+        
+        $empManager = User::with('project')->where('id','=',$user->id)->first();
+
+        $otherinfo['employeeName'] = "$user->first_name $user->last_name";
+        $otherinfo['employeeProject'] = $user->project->project_name;
+        
+        //Get leave categories
+        $leave_categories = [];
+        $allCat = Leave_categories::all();
+        foreach($allCat as $cat){
+            $leave_categories[$cat->id] =$cat->category_name;
+        }
+        
+        //get all managers
+        $users = DB::select('select id,designation, first_name, last_name from users where working_status="Working" and (designation = ? Or designation = ?)', ['Project Manager','MD']);
+        $managers = [];
+        
+        //dd($empManager);
+        
+        foreach($users as $usr1){
+            if($user->id!=$usr1->id){
+                //if($empManager->project->manager_id==$usr1->id || $usr1->designation=='MD'){    
+                    $managers[$usr1->id] ="{$usr1->first_name} {$usr1->last_name}";
+                //}
+            }
+        }
+
+        
+        
+        
+        $leavesObj = Leaves::with('approval','leave_category','managerAppproval')->where('user_id','=',$user->id)->orderBy('created_at','desc')->get();
+        
+        
+        $data = [];
+        foreach($leavesObj as $k => $aLeave){
+            
+            $data[$k]['id'] = $aLeave->id;
+            $data[$k]['created_at'] = date('F j, Y, g:i a', strtotime($aLeave->created_at));
+            $data[$k]['leave_from'] = date('F j, Y', strtotime($aLeave->leave_from));
+            $data[$k]['leave_to'] = date('F j, Y', strtotime($aLeave->leave_to));
+            $data[$k]['no_working_days'] = $aLeave->no_working_days;
+            
+            
+            switch ($aLeave->status) {
+                case 0:
+                    $data[$k]['status'] = 'Pending';
+                    break;
+                case 1:
+                    $data[$k]['status'] = 'In Process';
+                    break;
+                case 2:
+                    $data[$k]['status'] = 'Approved';
+                    break;
+                case 3:
+                    $data[$k]['status'] = 'Rejected';
+                    break;
+                case 4:
+                    $data[$k]['status'] = 'Cancelled';
+                    break;
+                default:
+                    $data[$k]['status'] = 'Pending';
+            }
+            
+            $data[$k]['category'] = $aLeave->leave_category->category_name;
+            $data[$k]['type'] = $aLeave->leave_type > 0 ? 'Pre' : 'Post';
+            
+            
+            $data[$k]['remark'] = '';
+            foreach($aLeave->approval as $k2 => $app){
+                
+                $projectManager = $leavesObj[$k]->managerAppproval[$k2];
+                
+                switch ($app->approved) {
+                    case 0:
+                        $data[$k]['remark'] = 'Pending';
+                        break;
+                    case 1:
+                        $data[$k]['remark'].= 'In Process';
+                        break;
+                    case 2:
+                        $data[$k]['remark'].= "By {$projectManager->first_name} {$projectManager->last_name} (Approved)<br>";
+                        break;
+                    case 3:
+                        $data[$k]['remark'].= "By {$projectManager->first_name} {$projectManager->last_name} (Rejected)<br>";
+                        break;
+                    case 4:
+                        $data[$k]['remark'].= "By {$projectManager->first_name} {$projectManager->last_name} (Cancelled)<br>";
+                        break;
+                    default:
+                        $data[$k]['remark'] = 'Pending';
+                }
+            }
+            
+            $data[$k]['id'] = $aLeave->id;
+        }
+        //dd($data);
+
+      
+        $otherinfo['total_leaves'] = Leaves::where('user_id','=',$user->id)->where('status','=',2)->sum('no_working_days');
+        
+        if($otherinfo['total_leaves']>0){
+            $otherinfo['preLeave'] = Leaves::where('user_id','=',$user->id)->where('status','=',2)->where('leave_type','=',1)->sum('no_working_days');
+            $otherinfo['prePercent'] = round(($otherinfo['preLeave'] * 100) / $otherinfo['total_leaves']);
+
+            $otherinfo['postLeave'] = Leaves::where('user_id','=',$user->id)->where('status','=',2)->where('leave_type','=',0)->sum('no_working_days');
+            $otherinfo['postPercent'] = round(($otherinfo['postLeave'] * 100) / $otherinfo['total_leaves']);
+            
+        }else{
+            $otherinfo['preLeave'] = 0;
+            $otherinfo['prePercent'] = 0;
+            $otherinfo['postLeave'] = 0;
+            $otherinfo['postPercent'] = 0;
+            
+        }
+        
+                
+        $catGroup = Leaves::with('leave_category')->selectRaw("leave_category_id, sum(no_working_days) as category_count")
+                        ->where('status','=',2)->where('user_id','=',$user->id)
+                        ->groupBy('leave_category_id')
+                        ->get();
+                
+        $leaveCategories = [];   
+        foreach($catGroup as $a){
+            $leaveCategories[$a->leave_category->category_name] = $a['category_count'];
+        }
+        
+        
+        $allEmployees = [];
+        
+        $allEmps = User::where('working_status','=','Working')->orderBy('first_name')->get();
+        
+        foreach($allEmps as $kk => $userObj){
+            $allEmployees[$userObj->id] = "{$userObj->first_name} {$userObj->last_name}";
+        }
+        
+        
+        $leaveRecods = $this->projectAbsentee($user->project_id);
+        
+        return view('user.leaverequest',compact('leave_categories','leaveRecods','managers','allEmployees','data','otherinfo','leaveCategories','empManager','userLeaveHistory','user'));
+    }
+
+    
+    
+    private function getUserLeaveQuota($user_id){
+        
+        global $user;
+        $user = User::findOrFail($user_id);
+        
+        $forMonth = date('m', strtotime($user->date_allotted));
+        $forYear = date('Y', strtotime($user->date_allotted));
+        
+        global $allMonthsInsession;
+        $allMonthsInsession = [];
+        if($forMonth<=6){
+            $allMonthsInsession[] = "{$forYear}-01";
+            $allMonthsInsession[] = "{$forYear}-02";
+            $allMonthsInsession[] = "{$forYear}-03";
+            $allMonthsInsession[] = "{$forYear}-04";
+            $allMonthsInsession[] = "{$forYear}-05";
+            $allMonthsInsession[] = "{$forYear}-06";
+        }else{
+            $allMonthsInsession[] = "{$forYear}-07";
+            $allMonthsInsession[] = "{$forYear}-08";
+            $allMonthsInsession[] = "{$forYear}-09";
+            $allMonthsInsession[] = "{$forYear}-10";
+            $allMonthsInsession[] = "{$forYear}-11";
+            $allMonthsInsession[] = "{$forYear}-12";
+        }
+        
+        $userLeaves = Leaves::where( function($query) {
+            global $user;
+            $query = $query->where('user_id', '=', $user->id);
+            $query = $query->where('status', '=', 2);
+            $query = $query->where('leave_category_id', '!=', 3);
+            return $query;
+        })->where( function($query) {
+            global $allMonthsInsession;
+            foreach($allMonthsInsession as $aMonth){
+                $query = $query->orWhere('leave_from', 'LIKE', "$aMonth%");
+                $query = $query->orWhere('leave_to', 'LIKE', "$aMonth%");
+            }
+            return $query;
+        })->get();
+        
+        $userLeaveHistory = [];
+        $userLeaveHistory['totalAllotted'] = $user->leaves_allotted + $user->leaves_forward + $user->other_leaves_allotted;
+        $userLeaveHistory['leaveTaken'] = 0;
+        
+        $userLeaveHistory['prePercent'] = 0;
+        $userLeaveHistory['postPercent'] = 0;
+        $userLeaveHistory['leaveType'][0] = 0;
+        $userLeaveHistory['leaveType'][1] = 0;
+        
+        foreach($userLeaves as $uL){
+            
+            $YmFrom = date('Y-m', strtotime($uL->leave_from));
+            $YmTo = date('Y-m', strtotime($uL->leave_to));
+            
+            if($YmFrom == $YmTo)
+            {
+                $userLeaveHistory['leaveTaken']+= $uL->no_working_days;
+                if(isset($userLeaveHistory['leaveType'][$uL->leave_type])){
+                    $userLeaveHistory['leaveType'][$uL->leave_type]+= $uL->no_working_days;
+                }else{
+                    $userLeaveHistory['leaveType'][$uL->leave_type] = $uL->no_working_days;
+                }
+            }
+            else
+            {
+                $allDates = $this->dateRange( $uL->leave_from, $uL->leave_to);
+                $workingDaysInLeaveApp = $uL->no_working_days;
+                
+                foreach($allDates as $aDay){
+                    if (!in_array(date('Y-m', strtotime($aDay)), $allMonthsInsession)){
+                        
+                        if('Sun' !== date('D', strtotime($aDay))){
+                            $workingDaysInLeaveApp--;
+                        }
+                    }
+                }
+                
+                $userLeaveHistory['leaveTaken']+= $workingDaysInLeaveApp;
+                if(isset($userLeaveHistory['leaveType'][$uL->leave_type])){
+                    $userLeaveHistory['leaveType'][$uL->leave_type]+= $workingDaysInLeaveApp;
+                }else{
+                    $userLeaveHistory['leaveType'][$uL->leave_type] = $workingDaysInLeaveApp;
+                }
+            }
+            
+            
+        }
+        
+        $userLeaveHistory['leaveBalance'] = $userLeaveHistory['totalAllotted'] - $userLeaveHistory['leaveTaken'];
+        
+        if($userLeaveHistory['leaveTaken']>0){
+            if(isset($userLeaveHistory['leaveType'][1])){
+                $userLeaveHistory['prePercent'] = round(($userLeaveHistory['leaveType'][1] * 100) / $userLeaveHistory['leaveTaken']);
+            }
+            if(isset($userLeaveHistory['leaveType'][0])){
+                $userLeaveHistory['postPercent'] = round(($userLeaveHistory['leaveType'][0] * 100) / $userLeaveHistory['leaveTaken']);
+            }
+        }
+        
+        return $userLeaveHistory;
+        
+    }
+    
+    
+    public function downloadLeaveStatus($type=0){
+        if($type==0){
+            return; 
+        }
+        
+        $data = [];
+        
+        $users = User::where('working_status','=','Working')->get();
+        
+        foreach($users as $user){
+            $data[$user->emp_id]['user_id'] = $user->emp_id;
+            $data[$user->emp_id]['emp_first_name'] = $user->first_name;
+            $data[$user->emp_id]['emp_last_name'] = $user->last_name;
+            $data[$user->emp_id]['leaves_forward'] = $user->leaves_forward;
+            $data[$user->emp_id]['leaves_allotted'] = $user->leaves_allotted;
+            $data[$user->emp_id]['other_leaves_allotted'] = $user->other_leaves_allotted;
+            
+            $tempData = $this->getUserLeaveQuota($user->id);
+            
+            switch ($type) {
+                case 1:
+                    break;
+                case 2:
+                    $data[$user->emp_id]['total_leave'] = $user->leaves_forward + $user->leaves_allotted + $user->other_leaves_allotted;
+                    $data[$user->emp_id]['leave_taken'] = $tempData['leaveTaken'];
+                    $data[$user->emp_id]['leave_balance'] = $tempData['leaveBalance'];
+                    $data[$user->emp_id]['next_leave_forward'] = floor($tempData['leaveBalance'] / 2);
+                    break;
+                case 3:
+                    $data[$user->emp_id]['leaves_forward'] = (int) floor($tempData['leaveBalance'] / 2);
+                    break;
+            }
+            
+            
+        }
+        
+        $filename = "leave_status.csv";
+        $handle = fopen($filename, 'w+');
+        
+        $headings = [];
+        foreach($data as $k => $d){
+            foreach($d as $kk => $dd){
+                $headings[] = $kk;
+            }
+            break;
+        }
+        
+        fputcsv($handle, $headings);
+        foreach($data as $k => $d){
+            fputcsv($handle, $d);
+        }
+        
+        fclose($handle);
+        
+        $headers = array(
+            'Content-Type' => 'text/csv',
+        );
+        
+        
+        return Response::download($filename, $filename, $headers);
+        
+        
+       // return view('user.downloadLeavestatus',compact('data'));
+    }
+    
+    
+    public function editleave($leave_id, $e=''){
+        
+        $otherinfo = [];
+        $loggeduser = Auth::user();
+        global $leave;
+        $leave = Leaves::with('approval','leave_category','managerAppproval','foruser')->where('id','=',$leave_id)->first();
+
+        $allComments = [];
+        foreach($leave->approval as $approvalKey => $approvalFrom){
+ 
+            $allComments[$approvalKey]['updated_at'] = date("d-m-Y, g:i a", strtotime($approvalFrom->updated_at));
+            $allComments[$approvalKey]['comment_id'] = $approvalFrom->id;
+            
+            $manager = User::where('id','=', $approvalFrom->manager_id)->first();
+            
+            $allComments[$approvalKey]['manager'] = "{$manager->first_name} {$manager->last_name}";
+            
+            
+            switch ($approvalFrom->approved) {
+                case 0:
+                    $allComments[$approvalKey]['status'] = 'Pending';
+                    $allComments[$approvalKey]['class'] = '';
+                    break;
+                case 1:
+                    $allComments[$approvalKey]['status'] = 'In Process';
+                    $allComments[$approvalKey]['class'] = 'text-muted';
+                    break;
+                case 2:
+                    $allComments[$approvalKey]['status'] = 'Approved';
+                    $allComments[$approvalKey]['class'] = 'text-success';
+                    break;
+                case 3:
+                    $allComments[$approvalKey]['status'] = 'Rejected';
+                    $allComments[$approvalKey]['class'] = 'text-danger';
+                    break;
+                case 4:
+                    $allComments[$approvalKey]['status'] = 'Cancelled';
+                    $allComments[$approvalKey]['class'] = 'text-warning';
+                    break;
+                default:
+                    $allComments[$approvalKey]['status'] = 'Pending';
+                    $allComments[$approvalKey]['class'] = '';
+            }
+            $allComments[$approvalKey]['comment'] = $approvalFrom->comment;
+        }
+        
+        //*******************************************Leave Quota**********************************************************start
+        
+        $userLeaveHistory = $this->getUserLeaveQuota($leave->foruser->id);
+        
+ 
+        //******************************************************************************************************************end
+        
+        
+        if($leave->user_id!=$loggeduser->id && $loggeduser->role_id!=1){
+            return view('user.notauthorized');
+        }
+
+        $otherinfo['employeeName'] = $leave->foruser->first_name .' '. $leave->foruser->last_name;
+        $otherinfo['employeeProject'] = $leave->foruser->first_name.' '.$leave->foruser->last_name;
+        
+        $isEditable = false;
+        $displayEditLink = false;
+        if($leave->user_id==$loggeduser->id){
+            $displayEditLink = true;
+            if($e==1){    
+                $isEditable = true;
+            }
+        }
+        
+        $otherinfo['isAdmin'] = false;
+        if($loggeduser->role_id==1){
+            $otherinfo['isAdmin'] = true;
+            $otherinfo['canStatusBeUpdated'] = true;
+            if($leave->leave_from < date('Y-m-d')){
+                //$otherinfo['canStatusBeUpdated'] = false;
+            }
+        }
+        
+        $empManager = User::with('project')->where('id','=',$loggeduser->id)->first();
+        
+        //dd( $empManager);
+        
+        //Get leave categories
+        $leave_categories = [];
+        $allCat = Leave_categories::all();
+        foreach($allCat as $cat){
+            $leave_categories[$cat->id] =$cat->category_name;
+        }
+        
+        $allSelectedManagers = [];
+        foreach($leave->approval as $appr){
+            $allSelectedManagers[] = $appr->manager_id;
+        }
+        
+        //get all managers
+        $users = DB::select('select id, first_name, last_name from users where working_status="Working" and (designation = ? OR designation = ?)', ['Project Manager','MD']);
+        $managers = [];
+        foreach($users as $usr){
+            if($loggeduser->id!=$usr->id){
+                //if($empManager->project->manager_id==$usr->id){
+                    $managers[$usr->id] ="{$usr->first_name} {$usr->last_name}";
+                //}
+            }
+        }
+ 
+        
+        $leavesObj = Leaves::with('approval','leave_category','managerAppproval')->where('user_id','=',$leave->foruser->id)->orderBy('created_at','desc')->get();
+        $data = [];
+        foreach($leavesObj as $k => $aLeave){
+            
+            $data[$k]['id'] = $aLeave->id;
+            $data[$k]['created_at'] = date('F j, Y, g:i a', strtotime($aLeave->created_at));
+            $data[$k]['leave_from'] = date('F j, Y', strtotime($aLeave->leave_from));
+            $data[$k]['leave_to'] = date('F j, Y', strtotime($aLeave->leave_to));
+            $data[$k]['no_working_days'] = $aLeave->no_working_days;
+            
+            
+            switch ($aLeave->status) {
+                case 0:
+                    $data[$k]['status'] = 'Pending';
+                    break;
+                case 1:
+                    $data[$k]['status'] = 'In Process';
+                    break;
+                case 2:
+                    $data[$k]['status'] = 'Approved';
+                    break;
+                case 3:
+                    $data[$k]['status'] = 'Rejected';
+                    break;
+                case 4:
+                    $data[$k]['status'] = 'Cancelled';
+                    break;
+                default:
+                    $data[$k]['status'] = 'Pending';
+            }
+            
+            $data[$k]['category'] = $aLeave->leave_category->category_name;
+            $data[$k]['type'] = $aLeave->leave_type > 0 ? 'Pre' : 'Post';
+            
+            
+            $data[$k]['remark'] = '';
+            foreach($aLeave->approval as $k2 => $app){
+                
+                $projectManager = $leavesObj[$k]->managerAppproval[$k2];
+                
+                switch ($app->approved) {
+                    case 0:
+                        $data[$k]['remark'] = 'Pending';
+                        break;
+                    case 1:
+                        $data[$k]['remark'].= "By {$projectManager->first_name} {$projectManager->last_name} (Approved)<br>";
+                        break;
+                    case 2:
+                        $data[$k]['remark'].= "By {$projectManager->first_name} {$projectManager->last_name} (Rejected)<br>";
+                        break;
+                    default:
+                        $data[$k]['remark'] = 'Pending';
+                }
+            }
+            
+            $data[$k]['id'] = $aLeave->id;
+        }
+        //dd($data);
+        
+        //$otherinfo['total_leaves'] = Leaves::where('user_id','=',$loggeduser->id)->where('status','=',2)->count();
+        $otherinfo['total_leaves'] = Leaves::where('user_id','=',$leave->foruser->id)->where('status','=',2)->sum('no_working_days');
+        
+        if($otherinfo['total_leaves']>0){
+            $otherinfo['preLeave'] = Leaves::where('user_id','=',$leave->foruser->id)->where('status','=',2)->where('leave_type','=',1)->sum('no_working_days');
+            $otherinfo['prePercent'] = round(($otherinfo['preLeave'] * 100) / $otherinfo['total_leaves']);
+            
+            $otherinfo['postLeave'] = Leaves::where('user_id','=',$leave->foruser->id)->where('status','=',2)->where('leave_type','=',0)->sum('no_working_days');
+            $otherinfo['postPercent'] = round(($otherinfo['postLeave'] * 100) / $otherinfo['total_leaves']);
+        }else{
+            $otherinfo['preLeave'] = 0;
+            $otherinfo['prePercent'] = 0;
+            $otherinfo['postLeave'] = 0;
+            $otherinfo['postPercent'] = 0;
+        }
+        
+        
+        
+        $userProject = Project::findOrFail($leave->foruser->project_id);
+        $otherinfo['employeeProject'] = 'No project assigned';
+        if(isset($empManager->project->project_name)){
+            $otherinfo['employeeProject'] = $userProject->project_name;
+        }
+        /*
+        $catGroup = Leaves::with('leave_category')->selectRaw("leave_category_id, count(leave_category_id) as category_count")
+        ->where('status','=',2)->where('user_id','=',$loggeduser->id)
+        ->groupBy('leave_category_id')
+        ->get();
+        */
+
+        $catGroup = Leaves::with('leave_category')->selectRaw("leave_category_id, sum(no_working_days) as category_count")
+        ->where('status','=',2)->where('user_id','=',$leave->foruser->id)
+        ->groupBy('leave_category_id')
+        ->get();
+        
+        
+        $leaveCategories = [];
+        foreach($catGroup as $a){
+            $leaveCategories[$a->leave_category->category_name] = $a['category_count'];
+        }
+        
+        $editedLeave = leaverevision::where('leave_id', '=', $leave_id)->orderby('id')->get();
+        
+        
+        
+        $leaveRecods = $this->projectAbsentee($leave->foruser->project_id);
+        
+        return view('user.editleave',compact('leave_categories','editedLeave','leaveRecods','displayEditLink','allComments','managers','leave','allSelectedManagers', 'data','otherinfo','leaveCategories','empManager','isEditable','userLeaveHistory'));
+    }
+    
+    
+    
+    public function leaveAdvance(){
+        $user = Auth::user();
+        
+        //dd($user);
+        
+        return view('user.leavesadvance',compact('user'));
+    }
+    
+
+    public function myLeaveHistory(){
+        $user = Auth::user();
+        
+        $requestData = [];
+        $requestData['month'] = isset($request->month) ? $request->month : date('m');
+        $requestData['year'] = isset($request->month) ? $request->year : date('Y');
+        
+
+        $leavesObj = Leaves_advance::with('employee')->where('emp_id','=', $user->emp_id);
+        
+        
+        $leavesObj = $leavesObj->orderBy('year','desc')->orderBy('month')->get();
+        
+        //dd($leavesObj);
+        
+        
+        $data = [];
+        foreach($leavesObj as $k => $aLeave){
+            $data[$k]['emp_id'] = $aLeave->emp_id;
+            $data[$k]['employee'] = "{$aLeave->employee->first_name} {$aLeave->employee->last_name}";
+            $data[$k]['month'] = $aLeave->month;
+            $data[$k]['year'] = $aLeave->year;
+            $data[$k]['year'] = $aLeave->year;
+            $data[$k]['leaves'] = $aLeave->leaves;
+            $data[$k]['advance'] = $aLeave->advance;
+            $data[$k]['half_day'] = $aLeave->half_day;
+            $data[$k]['half_day_dates'] = $aLeave->half_day_dates;
+            $data[$k]['late_mark'] = $aLeave->late_mark;
+            $data[$k]['overtime'] = $aLeave->overtime;
+            $data[$k]['sent_at'] = $aLeave->created_at;
+        }
+        
+        //dd($data);
+        
+        //dd($requestData);
+        
+        
+        return view('user.lahistory',compact('requestData','data'));
+    }
+    
+    
+    
+    public function savela(Request $request){
+        $this->validate($request, [
+            'emp_id' => 'required|numeric',
+            'subject' => 'required',
+            'leaves'=>'required|numeric',
+        ]);
+        
+        $LeavesAdvance = new Leaves_advance();
+        
+        $LeavesAdvance->subject = $request->subject;
+        $LeavesAdvance->emp_id = $request->emp_id;
+        
+        $tmpMonthYear = explode('-', $request->month_year);
+        if(count($tmpMonthYear)>0){
+            $LeavesAdvance->month = $tmpMonthYear[0];
+            $LeavesAdvance->year =  $tmpMonthYear[1];
+        }
+        $LeavesAdvance->leaves = $request->leaves;
+        $LeavesAdvance->advance = $request->advance;
+        $LeavesAdvance->half_day = $request->half_day;
+        $LeavesAdvance->half_day_dates = $request->half_day_dates;
+        $LeavesAdvance->late_mark = $request->late_mark;
+        $LeavesAdvance->overtime = $request->overtime;
+        $result = $LeavesAdvance->save();
+        
+        $msg = '';
+        if($result){
+            $msg = "<div class='alert alert-success'>Your leave and advance successfully submitted.</div>";
+        }else{
+            $msg = "<div class='alert alert-danger'>There was a problem, Please contact administrator.</div>";
+        }
+        return view('user.savela',compact('msg'));
+    }
+    
+    
+    
+    public function search(Request $request){
+        
+        
+        $tmp = explode(' ', $request->s);
+        
+        
+        $heading = 'Search Result';
+        
+        //$employees = User::with('project')->where('working_status','=','Working');
+        $employees = User::with('project');
+        
+        foreach($tmp as $k => $t){
+            if($k==0){
+            $employees = $employees->where('first_name', 'LIKE',"%{$t}%")->orwhere('last_name', 'LIKE',"%{$t}%");
+            }else{
+                $employees = $employees->orwhere('first_name', 'LIKE',"%{$t}%")->orwhere('last_name', 'LIKE',"%{$t}%");
+            }
+        }
+        $employees = $employees->orwhere('designation', 'LIKE',"%{$request->s}%");
+        
+        $employees = $employees->orderby('emp_id')->get();
+        
+                
+        $managerName = [];
+        foreach($employees as $emp){
+            if(!empty($emp->project->manager_id)){
+                $manager = User::findOrFail($emp->project->manager_id);
+                if(isset($manager->first_name)){
+                    $managerName[$emp->emp_id] = "$manager->first_name $manager->last_name";
+                }
+            }
+        }
+        
+                
+        return view('user.search',compact('employees','managerName','heading'));
+    }
+    
+    
+    
+    
+    public function timelog($id=''){
+        
+        $user = Auth::user();
+        if($id=='' || $id <=0 ){
+            $id = $user->id;
+        }
+        $userObj = User::findOrFail($id);
+        
+                
+        return view('user.timelog', compact('id', 'userObj'));
+    }
+    
+
+    
+    public function importtimelog(Request $request, $m=''){
+        
+        $msg = '';
+        $fileToRead = '';
+        $data = [];
+        
+        if ($request->file('timelogfile')!==null && $request->file('timelogfile')->isValid()) {
+            $timelogfile = 'timelog_'.date('Ymd').'.'.'xls';
+            $request->file('timelogfile')->move('timelog', $timelogfile);
+            
+            $fileToRead = public_path() .'/timelog/'.  $timelogfile;
+            
+            
+            $reader = new Xls();
+            
+            $spreadsheet = $reader->load($fileToRead);
+            
+            $sheetNumbers = [0, 1];
+            
+            foreach($sheetNumbers as $sheetNumber){
+				$allRows = $spreadsheet->getSheet($sheetNumber)->getRowDimensions();
+
+				$dataDeading = [];
+
+				foreach($allRows as $aRow){
+					for($i=1; $i<=33; $i++){
+						if($spreadsheet->getSheet($sheetNumber)->getCellByColumnAndRow($i, $aRow->getRowIndex())->getValue()=='Days'){
+							for($d=$i+1; $d<=31; $d++){
+								$cellValue = $spreadsheet->getSheet($sheetNumber)->getCellByColumnAndRow($d, $aRow->getRowIndex())->getValue();
+								if($cellValue!=NULL){
+									$dataDeading[$d] =date('Y-m-d', strtotime($cellValue));;
+								}
+							}
+							break;
+						}
+					}
+				}
+
+
+				$startFromRow = 1;
+
+				foreach($allRows as $aRow){
+					for($i=1; $i<=33; $i++){
+						if($spreadsheet->getSheet($sheetNumber)->getCellByColumnAndRow($i, $aRow->getRowIndex())->getValue()=='Employee Code:-'){
+							$emp_id = $spreadsheet->getSheet($sheetNumber)->getCellByColumnAndRow($i+9, $aRow->getRowIndex())->getValue();
+
+							$startFromRow = $aRow->getRowIndex() + 3;
+							continue;
+						}   
+					}
+
+					if(isset($emp_id)){    
+						for($i=$startFromRow; $i<=$startFromRow+6; $i++){
+							foreach($dataDeading as $col => $day){
+								$data[$emp_id][$day][$spreadsheet->getSheet($sheetNumber)->getCellByColumnAndRow(2, $i)->getValue()] = $spreadsheet->getSheet($sheetNumber)->getCellByColumnAndRow($col, $i)->getValue();
+
+							}
+						}
+					}
+
+				}
+
+				//dd($data);
+
+				foreach($data as $emp_id => $aRecord){
+
+					foreach($aRecord as $aDate => $log){
+
+
+						$user = DB::table('users')->where('emp_id', '=', $emp_id)->first();
+
+						if(isset($user->id)){
+							$logObj = DB::table('timelogs')->where('user_id', '=', $user->id)->where('date','=',$aDate)->first();
+						}else{
+							continue;
+						}
+
+						if($logObj==NULL){
+							$addlog = new Timelog();
+							$addlog->user_id = $user->id;
+							$addlog->date = $aDate;
+						}else{
+							$addlog = Timelog::findOrFail($logObj->id);
+						}
+
+						$addlog->incoming_time = $log['In Time'];
+						$addlog->outgoing_time = $log['Out Time'];
+						$addlog->status = $log['Status'];
+						$addlog->duration = $log['Duration'];
+						$addlog->save();
+
+					}
+				}
+
+				//$timelog = new Timelog();    
+				//$timelog->
+			}
+            
+            return redirect('import/importtimelog/1');
+        }
+        
+        if($m==1){
+            $msg = "File imported successfully. ";
+        }
+        
+        return view('user.importtimelog', compact('msg'));
+    }
+    
+    
+  
+
+    
+    public function importCsv()
+    {
+        $file = public_path('file/test.csv');
+        
+        $customerArr = $this->csvToArray($file);
+        
+        for ($i = 0; $i < count($customerArr); $i ++)
+        {
+            User::firstOrCreate($customerArr[$i]);
+        }
+        
+        return 'Jobi done or what ever';
+    }
+    
+    public function importAdvanceHistory(Request $request, $m=''){
+        
+        $msg = '';
+        $fileToRead = '';
+        $data = [];
+        
+        $user = Auth::user();
+   
+        if ($request->file('advancehistoryfile')!==null && $request->file('advancehistoryfile')->isValid()) {
+            $advancehistoryfile = 'advancehistory_'.date('Ymd').'.'.'csv';
+            $request->file('advancehistoryfile')->move('advancehistory', $advancehistoryfile);
+            
+            $fileToRead = public_path() .'/advancehistory/'.  $advancehistoryfile;
+            
+            $csvData = $this->csvToArray($fileToRead);
+            
+            foreach($csvData as $Data){
+            
+               
+                $employee = User::where('emp_id','=',$Data['EmployeeID'])->first();
+                
+                if(isset($employee->id) && $employee->id!=''){
+                    $data = array();
+                    $data['user_id'] = $employee->id;
+                    $data['amount'] = $Data['Amount'];
+                    $data['comment'] = $Data['Comment'];
+                    $data['ondate'] = empty($Data['Date']) ? date('Y-m-d') : date('Y-m-d', strtotime($Data['Date']));
+                    $data['entered_by'] = $user->id;
+                    
+                    
+                    $empAdvance = new Advance();
+                    foreach($data as $cdk => $cd){
+                        $empAdvance->$cdk = $cd;
+                    }
+                    
+                    $res = $empAdvance->save();
+                }
+            }
+  
+            
+            return redirect('import/importadvancehistory/1');
+        }
+        
+        if($m==1){
+            $msg = "File imported successfully. ";
+        }
+        
+        return view('user.importadvancehistory', compact('msg'));
+    }
+    
+
+    private function dateRange( $first, $last, $step = '+1 day', $format = 'Y-m-d' ) {
+        $dates = [];
+        $current = strtotime( $first );
+        $last = strtotime( $last );
+        
+        while( $current <= $last ) {
+            
+            $dates[] = date( $format, $current );
+            $current = strtotime( $step, $current );
+        }
+        
+        return $dates;
+    }
+    
+    
+    public function absenteeReport(Request $request, $t=0){
+        
+        
+        $userInput = $request->all();
+        
+        global $requestData;
+        $requestData = [];
+        //$requestData['fromDate'] = isset($request->fromDate) ? $request->fromDate : date('Y-m-d', strtotime("-30 days"));
+        //$requestData['toDate'] = isset($request->toDate) ? $request->toDate : date('Y-m-d')." 12:59:59";
+
+        if($t==1){
+            $requestData['toDate'] = isset($request->fromDate) ? $request->fromDate : date('Y-m-d');
+            $requestData['fromDate'] = isset($request->fromDate) ? $request->fromDate : date('Y-m-d');
+        }else{
+            $requestData['toDate'] = isset($request->toDate) ? $request->toDate : date('Y-m-d', strtotime("+30 days"));
+            $requestData['fromDate'] = isset($request->fromDate) ? $request->fromDate : date('Y-m-d');
+        }
+        
+        
+        $allDates = $this->dateRange( $requestData['fromDate'], $requestData['toDate']);
+        
+        
+        
+        $data = [];
+        
+
+        $leavesObj = Leaves::with('approval','leave_category','managerAppproval','foruser')->where('status','=',2);
+
+        
+        
+        $leavesObj = $leavesObj->where( function($query) {
+            global $requestData;
+            $query = $query->where('leave_from', '>=', $requestData['fromDate']);
+            $query = $query->where('leave_from', '<=', $requestData['toDate']);
+            return $query; 
+        })->orWhere( function($query) {
+            global $requestData;
+            $query = $query->where('leave_to', '>=', $requestData['fromDate']);
+            $query = $query->where('leave_to', '<=', $requestData['toDate']);
+            return $query;
+        })->orderBy('created_at','desc')->get();
+        
+        
+
+        $leaveRecods = [];
+        foreach($allDates as $aDate){
+            foreach($leavesObj as $aLeave){
+                if($aDate >= $aLeave->leave_from && $aDate <= $aLeave->leave_to){
+                    $leaveRecods[$aDate][] =  "<a href='/admin/{$aLeave->foruser->id}/edit'>{$aLeave->foruser->first_name} {$aLeave->foruser->last_name}</a>";
+                }
+            }
+        }
+        
+  
+        
+        return view('user.absenteereport', compact('data','requestData','leaveRecods'));
+        
+    }
+
+    
+ 
+    public function projectAbsentee($pid=0){
+        
+         
+        global $requestData;
+        $requestData = [];
+        
+        $requestData['fromDate'] = date('Y-m-d',strtotime("-7 days"));
+        $requestData['toDate'] = date('Y-m-d',strtotime("7 days"));
+        
+        $allDates = $this->dateRange( $requestData['fromDate'], $requestData['toDate']);
+        
+        
+        $data = [];
+        
+        
+        $leavesObj = Leaves::with('approval','leave_category','managerAppproval','foruser')->where('status','=',2);
+
+        
+        $leavesObj = $leavesObj->where( function($query) {
+            global $requestData;
+            $query = $query->where('leave_from', '>=', $requestData['fromDate']);
+            $query = $query->where('leave_from', '<=', $requestData['toDate']);
+            return $query;
+        })->orWhere( function($query) {
+            global $requestData;
+            $query = $query->where('leave_to', '>=', $requestData['fromDate']);
+            $query = $query->where('leave_to', '<=', $requestData['toDate']);
+            return $query;
+        })->orderBy('created_at','desc')->get();
+        
+        
+        
+        $leaveRecods = [];
+        foreach($allDates as $aDate){
+            foreach($leavesObj as $aLeave){
+                if($aDate >= $aLeave->leave_from && $aDate <= $aLeave->leave_to){
+                    if($pid==$aLeave->foruser->project_id){
+                        $leaveRecods[$aDate][] =  "<a href='/admin/{$aLeave->foruser->id}/edit'>{$aLeave->foruser->first_name} {$aLeave->foruser->last_name}</a>";
+                    }
+                }
+            }
+        }
+        
+        
+        return $leaveRecods;
+        
+        //return view('user.projectabsentee', compact('data','requestData','leaveRecods'));
+        
+    }
+    
+    
+    
+    private function csvToArray($filename = '', $delimiter = ',')
+    {
+        if (!file_exists($filename) || !is_readable($filename))
+            return false;
+            
+            $header = null;
+            $data = array();
+            if (($handle = fopen($filename, 'r')) !== false)
+            {
+                while (($row = fgetcsv($handle, 1000, $delimiter)) !== false)
+                {
+                    if (!$header)
+                        $header = $row;
+                        else
+                            $data[] = array_combine($header, $row);
+                }
+                fclose($handle);
+            }
+            
+            return $data;
+    }
+    
+    
+    public function updateLeaveStatus(Request $request, $m=''){
+        $msg = '';
+        $fileToRead = '';
+        $data = [];
+ 
+        if ($request->file('leavestatusfile')!==null && $request->file('leavestatusfile')->isValid()) {
+            $leavestatusfile = 'leavestatusfile_'.date('Ymd').'.'.'xls';
+            $request->file('leavestatusfile')->move('leavestatusfiles', $leavestatusfile);
+           
+            $fileToRead = public_path() .'/leavestatusfiles/'.  $leavestatusfile;
+            
+            $data = $this->csvToArray($fileToRead);
+            
+            foreach($data as $d){
+                $employees = User::where('emp_id', '=', $d['user_id'])->first();
+                
+                if(isset($employees->id)){
+                    $empUpdate = User::findOrFail($employees->id);
+                    
+                    
+                    if(isset($d['leaves_forward'])){
+                        $empUpdate->leaves_forward = $d['leaves_forward'];
+                    }
+                    if(isset($d['leaves_allotted'])){
+                        $empUpdate->leaves_allotted = $d['leaves_allotted'];
+                    }
+                    if(isset($d['other_leaves_allotted'])){
+                        $empUpdate->other_leaves_allotted = $d['other_leaves_allotted'];
+                    }
+                    
+                    $empUpdate->date_allotted = date('Y-m-d');
+                    
+                    $empUpdate->save();
+                }
+                
+            }
+            $m=1;
+        }    
+        
+        
+        
+        if($m==1){
+            $msg = "File imported successfully. ";
+        }
+        
+        return view('admin.leavestatus', compact('msg'));
+    }
+    
+    
+ 
+    
+    private function flush_buffers(){
+        ob_end_flush();
+        ob_flush();
+        flush();
+        ob_start();
+    } 
+    
+    
+    
+    public function migrateLeaves(){
+        
+        
+        $msg = '';
+
+        $allUsers = DB::table('users')->select('users.*')->get();
+        $allUsersWithIds = [];
+        foreach($allUsers as $aUser){
+            $allUsersWithIds[$aUser->emp_id] = $aUser->id;
+        }
+        
+        
+        $allLeaves = DB::table('emp_leave')
+        ->select('emp_leave.request_id','emp_leave.req_date','emp_leave.updated_date' ,'emp_leave.fr_date','emp_leave.to_date','emp_leave.days','emp_leave.reason','emp_leave.leave_classified',
+            'emp_leave.leave_type','emp_leave.fin_status','emp_leave.user_id as emp_id')
+            ->get();
+        
+        //http://dsr/dsr/index.php?fuseaction=site.get_leaves&get=emp_leave
+        
+       
+        echo "<br><div id='' style='margin-left:25px;'>Begin ...</div>";
+        
+        ini_set("max_execution_time", 4800);
+        ob_implicit_flush();
+        ob_end_flush();
+        
+            
+        
+        foreach($allLeaves as $aLeave){
+            
+            if(!isset($allUsersWithIds[$aLeave->emp_id])){
+                continue;
+            }
+            
+            $data = [];
+            
+            
+            $data['id'] = $aLeave->request_id;
+            $data['leave_from'] = $aLeave->fr_date;
+            $data['leave_to'] = $aLeave->to_date;
+            $data['no_working_days'] = $aLeave->days;
+            $data['reason'] = $aLeave->reason;
+            $data['user_id'] = $allUsersWithIds[$aLeave->emp_id];
+            
+            switch ($aLeave->leave_classified) {
+                case NULL:
+                case 'General':
+                case '':
+                    $data['leave_category_id'] = 1;
+                    break;
+                case 'VVS':
+                    $data['leave_category_id'] = 2;
+                    break;
+                case 'Long Medical':
+                    $data['leave_category_id'] = 3;
+                    break;
+                case 'Self Marriage':
+                case 'Marriage':    
+                    $data['leave_category_id'] = 4;
+                    break;
+                default:
+                    $data['leave_category_id'] = 1;
+            }
+            
+            $data['leave_type'] = ($aLeave->leave_type=='Post') ? 0 : 1;
+            $data['created_at'] = $aLeave->req_date;
+            //$data['updated_at'] = $aLeave->updated_date;
+            $data['updated_at'] = $aLeave->req_date;
+            
+            
+            switch ($aLeave->fin_status) {
+                case 'Pending':
+                    $data['status'] = 0;
+                    break;
+                case 'In Process':
+                    $data['status'] = 1;
+                    break;
+                case 'Approved':
+                    $data['status'] = 2;
+                    break;
+                case 'Rejected':
+                    $data['status'] = 3;
+                    break;
+                case 'Cancelled':
+                    $data['status'] = 4;
+                    break;
+                default:
+                    $data['status'] = 0;
+            }
+             
+            $leave = new Leaves();
+            foreach($data as $dk => $d){
+                $leave->$dk = $d;
+            }
+            $leave->save();
+            
+
+                   $allLeaveComment = DB::table('leave_comment')
+        ->select('leave_comment.leave_id','leave_comment.user_id','leave_comment.date' ,'leave_comment.action','leave_comment.comment')
+        ->where('leave_id','=',$leave->id)->orderBy('date','asc')->get();
+        
+        //http://dsr/dsr/index.php?fuseaction=site.get_leaves&fetch=leave_comment&leave_id=207
+        
+ 
+            foreach($allLeaveComment as $aComment){
+                
+                if(!isset($allUsersWithIds[$aComment->user_id])){
+                    continue;
+                }
+                
+                if($allUsersWithIds[$aComment->user_id]==$leave->user_id){
+                    continue;
+                }
+                
+                if($aComment->action=='Edit Application'){
+                    continue;
+                }
+                
+                $commentData = [];
+
+                $commentData['leave_id'] = $aComment->leave_id;
+                $commentData['manager_id'] = $allUsersWithIds[$aComment->user_id];
+                $commentData['comment'] = $aComment->comment;
+                $commentData['created_at'] = $aComment->date;
+                $commentData['updated_at'] = $aComment->date;
+                
+                switch ($aComment->action) {
+                    case 'Pending':
+                        $commentData['approved'] = 0;
+                        break;
+                    case 'In Process':
+                        $commentData['approved'] = 1;
+                        break;
+                    case 'Approved':
+                    case 'Force Approved':
+                        $commentData['approved'] = 2;
+                        break;
+                    case 'Rejected':
+                        $commentData['approved'] = 3;
+                        break;
+                    case 'Cancelled':
+                    case 'Canceled':     	
+                    case 'Not Applicable':    
+                        $commentData['approved'] = 4;
+                        break;
+                    default:
+                        $commentData['approved'] = 0;
+                }
+                
+                
+                $leaveApp = Leave_approval::where('leave_id','=',$commentData['leave_id'])->where('manager_id','=',$commentData['manager_id'])->first();
+                if(count($leaveApp)>0){
+                }else{
+                    $leaveApp = new Leave_approval();
+                }
+                
+                foreach($commentData as $cdk => $cd){
+                    $leaveApp->$cdk = $cd;
+                }
+                $leaveApp->save();
+             
+            }
+            
+            echo $aLeave->request_id.', ';
+
+        }
+        
+        echo "<div id='' style='margin-left:25px;'>......COMPLETE</div><br />";
+        
+        
+            
+            
+        exit;
+        
+        
+        return view('admin.migrateleaves', compact('msg'));
+    }
+    
+    
+    
+
+    public function advanceHistory(Request $request, $id='', $aid=''){
+        
+        if($aid!=''){
+            $a = Advance::where('id','=', $aid)->delete();
+        }
+        
+        $user = Auth::user();
+        $employee = User::findOrFail($id);
+       
+        $userAdvance = Advance::with('foruser')->where('user_id', '=',$id)->orderBy('ondate','asc')->get();
+        
+        
+        if(isset($request->amount) && $request->amount != ''){
+        
+            $data = array();
+            $data['user_id'] = $id;
+            $data['amount'] = $request->amount;
+            $data['comment'] = $request->comment;
+            $data['ondate'] = empty($request->ondate) ? date('Y-m-d') : $request->ondate;
+            $data['entered_by'] = $user->id;
+            
+            
+            $empAdvance = new Advance();
+            foreach($data as $cdk => $cd){
+                $empAdvance->$cdk = $cd;
+            }
+            
+            $res = $empAdvance->save();
+        
+            if($res){
+                return redirect("advance/history/$id");
+            }
+        }
+        
+        
+        return view('admin.advancehistory', compact('msg','employee','userAdvance'));
+    }
+    
+    
+ 
+    public function myAdvanceHistory(){
+        
+        $user = Auth::user();
+        $employee = User::findOrFail($user->id);
+        
+        $userAdvance = Advance::with('foruser')->where('user_id', '=',$user->id)->orderBy('ondate','asc')->get();
+        
+        return view('admin.myadvancehistory', compact('employee','userAdvance'));
+    }
+    
+    
+    public function migrateLeaves_with_API(){
+        
+        
+        $msg = '';
+        
+        $allUsers = DB::table('users')->select('users.*')->get();
+        $allUsersWithIds = [];
+        foreach($allUsers as $aUser){
+            $allUsersWithIds[$aUser->emp_id] = $aUser->id;
+        }
+        
+        /*
+        $allLeaves = DB::table('emp_leave')
+        ->select('emp_leave.request_id','emp_leave.req_date','emp_leave.updated_date' ,'emp_leave.fr_date','emp_leave.to_date','emp_leave.days','emp_leave.reason','emp_leave.leave_classified',
+            'emp_leave.leave_type','emp_leave.fin_status','emp_leave.user_id as emp_id')
+            ->get();
+        */    
+            $json = file_get_contents('http://dsr/dsr/index.php?fuseaction=site.get_leaves&fetch=emp_leave');
+            $allLeaves = json_decode($json);
+            
+            
+            echo "<br><div id='' style='margin-left:25px;'>Begin ...</div>";
+            
+            ini_set("max_execution_time", 4800);
+            ob_implicit_flush();
+            ob_end_flush();
+            
+            
+            
+            foreach($allLeaves as $aLeave){
+                
+                if(!isset($allUsersWithIds[$aLeave->emp_id])){
+                    continue;
+                }
+                
+                $data = [];
+                
+                
+                $data['id'] = $aLeave->request_id;
+                $data['leave_from'] = $aLeave->fr_date;
+                $data['leave_to'] = $aLeave->to_date;
+                $data['no_working_days'] = $aLeave->days;
+                $data['reason'] = $aLeave->reason;
+                $data['user_id'] = $allUsersWithIds[$aLeave->emp_id];
+                
+                switch ($aLeave->leave_classified) {
+                    case NULL:
+                    case 'General':
+                    case '':
+                        $data['leave_category_id'] = 1;
+                        break;
+                    case 'VVS':
+                        $data['leave_category_id'] = 2;
+                        break;
+                    case 'Long Medical':
+                        $data['leave_category_id'] = 3;
+                        break;
+                    case 'Self Marriage':
+                    case 'Marriage':
+                        $data['leave_category_id'] = 4;
+                        break;
+                    default:
+                        $data['leave_category_id'] = 1;
+                }
+                
+                $data['leave_type'] = ($aLeave->leave_type=='Post') ? 0 : 1;
+                $data['created_at'] = $aLeave->req_date;
+                //$data['updated_at'] = $aLeave->updated_date;
+                $data['updated_at'] = $aLeave->req_date;
+                
+                
+                switch ($aLeave->fin_status) {
+                    case 'Pending':
+                        $data['status'] = 0;
+                        break;
+                    case 'In Process':
+                        $data['status'] = 1;
+                        break;
+                    case 'Approved':
+                        $data['status'] = 2;
+                        break;
+                    case 'Rejected':
+                        $data['status'] = 3;
+                        break;
+                    case 'Cancelled':
+                        $data['status'] = 4;
+                        break;
+                    default:
+                        $data['status'] = 0;
+                }
+                
+                $leave = new Leaves();
+                foreach($data as $dk => $d){
+                    $leave->$dk = $d;
+                }
+                $leave->save();
+                
+                /*
+                $allLeaveComment = DB::table('leave_comment')
+                ->select('leave_comment.leave_id','leave_comment.user_id','leave_comment.date' ,'leave_comment.action','leave_comment.comment')
+                ->where('leave_id','=',$leave->id)->orderBy('date','asc')->get();
+                */
+                
+                $json1 = file_get_contents("http://dsr/dsr/index.php?fuseaction=site.get_leaves&fetch=leave_comment&leave_id={$leave->id}");
+                $allLeaveComment = json_decode($json1);
+                
+                if($allLeaveComment!=NULL)
+                {
+                    foreach($allLeaveComment as $aComment){
+                        
+                        if(!isset($allUsersWithIds[$aComment->user_id])){
+                            continue;
+                        }
+                        
+                        if($allUsersWithIds[$aComment->user_id]==$leave->user_id){
+                            continue;
+                        }
+                        
+                        if($aComment->action=='Edit Application'){
+                            continue;
+                        }
+                        
+                        $commentData = [];
+                        
+                        $commentData['leave_id'] = $aComment->leave_id;
+                        $commentData['manager_id'] = $allUsersWithIds[$aComment->user_id];
+                        $commentData['comment'] = $aComment->comment;
+                        $commentData['created_at'] = $aComment->date;
+                        $commentData['updated_at'] = $aComment->date;
+                        
+                        switch ($aComment->action) {
+                            case 'Pending':
+                                $commentData['approved'] = 0;
+                                break;
+                            case 'In Process':
+                                $commentData['approved'] = 1;
+                                break;
+                            case 'Approved':
+                            case 'Force Approved':
+                                $commentData['approved'] = 2;
+                                break;
+                            case 'Rejected':
+                                $commentData['approved'] = 3;
+                                break;
+                            case 'Cancelled':
+                            case 'Canceled':
+                            case 'Not Applicable':
+                                $commentData['approved'] = 4;
+                                break;
+                            default:
+                                $commentData['approved'] = 0;
+                        }
+                        
+                        
+                        $leaveApp = Leave_approval::where('leave_id','=',$commentData['leave_id'])->where('manager_id','=',$commentData['manager_id'])->first();
+                        if(count($leaveApp)>0){
+                        }else{
+                            $leaveApp = new Leave_approval();
+                        }
+                        
+                        foreach($commentData as $cdk => $cd){
+                            $leaveApp->$cdk = $cd;
+                        }
+                        $leaveApp->save();
+                        
+                    }
+                }
+                
+                echo $aLeave->request_id.', ';
+                
+            }
+            
+            echo "<div id='' style='margin-left:25px;'>......COMPLETE</div><br />";
+            
+            
+            
+            
+            exit;
+            
+            
+            return view('admin.migrateleaves', compact('msg'));
+    }
+}

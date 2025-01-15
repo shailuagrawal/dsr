@@ -1,0 +1,221 @@
+@extends('layouts.app')
+
+@section('content')
+
+<div class="row">
+    <div class="col-lg-12">
+        <h3 class="page-header">{{$heading}}</h3>
+    </div>
+    <!-- /.col-lg-12 -->
+</div>
+<!-- /.row -->
+
+ <!-- /.row -->
+<div class="row">
+<div class="col-lg-12">
+      
+                
+                
+                
+
+					<table width="100%" class="table table-bordered table-hover" id="dataTables-example">
+                        <thead>
+                            <tr>
+                                <th>Eid</th>
+                                <th>Name</th>
+                                <th>TH/LH/DSRH</th>
+                                <th>Designation</th>
+                                <th>Current Project</th>
+                                <th>Shift</th>
+                                <th>Manager</th>
+                                <th>Contact No</th>
+                                <th>Status</th>
+                                <th>DOB</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach($employees as $empolyee)
+                        
+                        <?php 
+                        $rowColorClass = '';
+                        if($empolyee->working_status=='Working'){
+							$rowColorClass = 'alert alert-success';
+						}elseif($empolyee->working_status=='Long Leave'){
+							$rowColorClass = 'alert alert-warning';
+						}else{
+							$rowColorClass = 'alert alert-danger';
+						}
+                        ?>
+                            <tr class="gradeX <?php echo $rowColorClass; ?>">
+                                <td>{{$empolyee->emp_id}}</td>
+                                <td><a href="{{url('/')}}/admin/{{$empolyee->id}}/edit" class='curEmp' id="{{$empolyee->id}}"  data-toggle="popover{{$empolyee->id}}">{{$empolyee->first_name}} {{$empolyee->last_name}}</a></td>
+                                <td>TH/LH/DSRH</td>
+                                <td>{{$empolyee->designation}}</td>
+                                <td>
+                                	@if(isset($empolyee->project))
+                                	<a href="{{url('/')}}/projects/{{$empolyee->project->id}}/edit">{{$empolyee->project->project_name}}</a>
+                                	@endif
+                                </td>
+                                <td><a href="javascript:void(0);" data-toggle="shift{{$empolyee->id}}">{{$empolyee->working_on_shift}}</a></td>
+                                <td>
+                                <?php if(isset($managerName[$empolyee->emp_id])){ ?>
+                                        {{$managerName[$empolyee->emp_id]}}
+                                <?php } ?>
+                                </td>
+                                <td>{{$empolyee->mobile_number}}
+                                
+                                	@if ($empolyee->landline_number!='')
+                                		<!-- {{$empolyee->landline_number}}, --> 
+                                	@endif
+                                	@if ($empolyee->other_contact!='')
+                                		<!--, {{$empolyee->other_contact}} -->
+                                	@endif	
+                                
+                                
+                                </td>
+                                <td><?php echo $empolyee->working_status; ?></td>
+                                <td>
+                                <?php 
+                                    echo date("j M", strtotime($empolyee->dob));
+                                ?>
+                                </td>
+                            </tr>
+                        @endforeach    
+ 						</tbody>
+                    </table>
+                                                               
+                
+                   
+        </div>
+        <!-- /.col-lg-12 -->
+    </div>
+    <!-- /.row -->
+
+
+
+@endsection
+
+
+@section('javascriptsection')
+<style type="text/css">
+    .bs-example{
+        margin: 200px 150px 0;
+    }
+    .bs-example button{
+        margin: 10px;
+</style>
+
+    <!-- provide the csrf token -->
+    <meta name="csrf-token" content="{{ csrf_token() }}" />
+               
+<script type="text/javascript">
+<!--
+
+<?php 
+
+$shifts = [
+    '07:00 AM' => '07:00 AM',
+    '07:15 AM' => '07:15 AM',
+    '07:30 AM' => '07:30 AM',
+    '07:45 AM' => '07:45 AM',
+    '08:00 AM' => '08:00 AM',
+    '08:15 AM' => '08:15 AM',
+    '08:30 AM' => '08:30 AM',
+    '08:45 AM' => '08:45 AM',
+    '09:00 AM' => '09:00 AM',
+    '09:15 AM' => '09:15 AM',
+    '09:30 AM' => '09:30 AM',
+    '09:45 AM' => '09:45 AM',
+    '10:00 AM' => '10:00 AM',
+    '19:15 AM' => '19:15 AM',
+    '10:30 AM' => '10:30 AM',
+    '10:45 AM' => '10:45 AM',
+    '11:00 AM' => '11:00 AM',
+    '11:15 AM' => '11:15 AM',
+    '11:30 AM' => '11:30 AM',
+    '11:45 AM' => '11:45 AM',
+    '12:00 PM' => '12:00 PM',
+    '12:15 PM' => '12:15 PM',
+    '12:30 PM' => '12:30 PM',
+    '12:45 PM' => '12:45 PM',
+    '01:00 PM' => '01:00 PM',
+    '01:15 PM' => '01:15 PM',
+    '01:30 PM' => '01:30 PM',
+    '01:45 PM' => '01:45 PM',
+    '01:00 PM' => '01:00 PM',
+    '01:15 PM' => '01:15 PM',
+    '01:30 PM' => '01:30 PM',
+    '01:45 PM' => '01:45 PM',
+    '02:00 PM' => '02:00 PM',
+    '02:15 PM' => '02:15 PM',
+    '02:30 PM' => '02:30 PM',
+    '02:45 PM' => '02:45 PM',
+    '03:00 PM' => '03:00 PM',
+    '03:15 PM' => '03:15 PM',
+    '03:30 PM' => '03:30 PM',
+    '03:45 PM' => '03:45 PM',
+    '04:00 PM' => '04:00 PM',
+    '04:15 PM' => '04:15 PM',
+    '04:30 PM' => '04:30 PM',
+    '04:45 PM' => '04:45 PM',
+    '05:00 PM' => '05:00 PM',
+    '05:15 PM' => '05:15 PM',
+    '05:30 PM' => '05:30 PM',
+    '05:45 PM' => '05:45 PM',
+    '06:00 PM' => '06:00 PM',
+    '06:15 PM' => '06:15 PM',
+    '06:30 PM' => '06:30 PM',
+    '06:45 PM' => '06:45 PM',
+    '07:00 PM' => '07:00 PM',
+    '07:15 PM' => '07:15 PM',
+    '07:30 PM' => '07:30 PM',
+    '07:45 PM' => '07:45 PM',
+    '08:00 PM' => '08:00 PM',
+];
+
+?>
+
+<?php foreach($employees as $empolyee){ ?>    
+$('[data-toggle="popover{{$empolyee->id}}"]').popover({
+    placement : 'left',
+    trigger : 'hover',
+    html : true,
+    content : '<div class="media"><a href="#" class="pull-left"><img src="{{url('/')}}/images/employees/{{$empolyee->photo}}" class="media-object" width="244" alt="{{$empolyee->first_name}} {{$empolyee->last_name}}"></a><div class="media-body"></div></div>'
+});
+
+var shiftDropDown = '<select>';
+<?php foreach($shifts as $shiftKey => $aShift){ ?>
+	shiftDropDown = shiftDropDown + '<option value="{{$shiftKey}}">{{$aShift}}</option>';
+<?php } ?>
+shiftDropDown = shiftDropDown + '</select>';
+
+$('[data-toggle="shift{{$empolyee->id}}"]').popover({
+    placement : 'right',
+    trigger : 'click',
+    html : true,
+    content : '<div class="media">' +shiftDropDown+ ' &nbsp;<a id="close-{{$empolyee->id}}" class="closeShift" href="javascript:void(0);">X</a> </div>'
+});
+
+<?php } ?>
+
+
+$(".closeShift").click(function(){
+
+	/*	
+	var closeLink, row_closeLink, closeid;
+	closeLink = this.id;
+	row_closeLink = closeLink.split("-");
+    closeid = row_closeLink[1];
+    alert(closeid);
+    */
+    //$("#shift"+closeid).style('display:none;');	
+    
+	
+}); 
+
+-->
+
+</script>
+    
+
+@endsection

@@ -1,0 +1,139 @@
+user_id,emp_first_name,emp_last_name,leaves_forward,leaves_allotted,other_leaves_allotted
+1,Shailesh,Agrawal,6,12,0
+2,Rajesh,Iyer,15,12,0
+6,Kamlesh,Kawde,0,12,0
+14,Mihir,Parmar,22,12,0
+20,Nandkishore,Neware,13,12,0
+29,Sanjay,Patle,19,12,0
+37,Deepak,Dhamde,0,12,0
+38,Tushar,Harinkhede,15,12,0
+44,Amit,Kamavisdar,8,12,0
+55,Arvind,Ghare,15,12,0
+56,Shailendra,Bisen,2,12,0
+65,Shamshad,Khan,18,12,0
+74,Ajay,Sharma,5,12,0
+83,Babbu,Turk,11,12,0
+88,Sunil,Pardhi,13,12,0
+90,Pramod,Borkar,18,12,0
+97,Vijay,Banote,15,12,0
+106,Rajesh,Shahare,15,12,0
+113,Raju,Pillare,11,12,0
+115,Alam,Sheikh,13,12,0
+120,Avinash,Telang,7,12,0
+131,Manish,Chawda,9,12,0
+134,Sumit,Yadav,2,12,0
+137,Prashant ,Borkar,12,12,0
+150,Umesh,Barewar,16,12,0
+157,Rohanikant,Bahekar,22,12,0
+159,Amit,Harinkhede,12,12,0
+164,Naib,Guru,16,12,0
+166,Kamlesh ,Trivedi,20,12,0
+184,Ratnadeep,Vaidya,11,12,0
+192,Pratibha,Indhani,10,12,0
+219,Ashish,Asati,15,12,0
+223,Dipak ,Turkar,6,12,0
+229,Zahid,Ansari,20,12,0
+234,Sushil,Bohare,16,12,0
+239,Jagdish,Raut,14,12,0
+241,Bhuwan,Pawar,13,12,0
+242,Virendra,Sanware,18,12,0
+249,Abdoali,Dhoondia,12,12,0
+262,Praneet,Jaiswal,8,12,0
+264,Raju,Pancheshwar,1,12,0
+268,Vijay,Mane,1,12,0
+277,Pandurang,Bante,21,12,0
+293,Nandkishor,Lilhare,1,12,0
+321,Suresh,Bijande,6,12,0
+324,Deepak,Raut,18,12,0
+328,Nagesh,Jaiswal,0,12,0
+330,Laxmikant,Nagpure,8,12,0
+344,Roshan,Bokde,6,12,0
+347,Deepak,Parmar,17,12,0
+349,Suhash,Randive,16,12,0
+351,Manas,Kulkarni,5,12,0
+362,Noushad,Saiyyad,22,12,0
+370,Grishma,Masani,11,12,0
+376,Umesh,Bhandarkar,20,12,0
+382,Nishant,Meshram,23,12,0
+384,Firoj,Khan,2,12,0
+406,Bharat,Rangari,15,12,0
+407,Devendra,Tumsare,6,12,0
+412,Khushal,Jawalkar,14,12,0
+418,Gulshan,Badole,17,12,0
+423,Ajaykumar,Gajbhiye,17,12,0
+425,Vinod,Kapse,5,12,0
+430,Mitesh,Rahangdale,2,12,0
+436,Chetan,Maraskole,19,12,0
+437,Hemant,Shankhwar,13,12,0
+439,Samir,Hinglaspurkar,15,12,0
+447,Rajesh,Lilhare,2,12,0
+448,Kamlesh,Dhomne,8,12,0
+454,Sumeet,Demani,5,12,0
+474,Manish,Mankar,1,12,0
+476,Mukesh,Rokde,0,12,0
+482,Prerna,Chauhan,3,12,0
+483,Dinesh,Mishra,8,12,0
+484,Vilash,Shahare,11,12,0
+485,Nagma,Mirza,0,12,0
+491,Kunal,Pande,12,12,0
+494,Himanshu,Gaidhani,0,12,0
+496,Ajay,Mane,14,12,0
+498,Nitin,Mishra,6,12,0
+499,Ruchita,Sharma,2,12,0
+500,Shahina,Sayyad,7,12,0
+503,Shailesh,Rahangdale,10,12,0
+506,Priya,Tondre,7,12,0
+507,Leena,Bisen,4,12,0
+508,Sakshi,Wakade,4,12,0
+514,Priyanka,Modi,0,12,0
+515,Ankita,Verma,5,12,0
+516,Shahista,Khan,9,12,0
+517,Rupesh,Lanjewar,7,12,0
+520,Pravin,Bisen,3,12,0
+522,Divyani,Meshram,4,12,0
+523,Pritam,Bisen,15,12,0
+526,Dinesh,Kamharkar,6,12,0
+535,Bhavik,Gajjar,4,12,0
+536,Sunny,Galani,13,12,0
+551,Leela,Thakre,1,12,0
+556,Nikhil,Malghate,0,12,0
+558,Amarsingh,Chandel,8,12,0
+561,Santosh,Mane,11,12,0
+563,Aziz,Hussain,8,12,0
+565,Hitesh,Chute,7,12,0
+566,Kausar,Rizvi,0,12,0
+570,Pratap,Nangele,0,12,0
+573,Shahrukh,Sheikh,4,12,0
+574,Khemraj,Kamble,8,12,0
+583,Meera,Narole,4,12,0
+584,Rajusingh,Chawle,12,12,0
+585,Diksha,Gadpal,5,12,0
+586,Shruti,Turkar,11,12,0
+587,Chaturdas,Barekar,8,12,0
+588,Rakhi,Motghare,3,12,0
+589,Sofiya,Saiyyad,5,12,0
+591,Rakhi,Bhute,0,12,0
+593,Punit,Kawale,6,12,0
+594,Ashutosh,Das,14,12,0
+597,Suraj,Thakur,7,12,0
+598,Nilesh,Meshram,10,12,0
+600,Kaushik,Pal,6,12,0
+603,Deepak ,Agrawal,4,12,0
+605,Shriram ,Murthi,6,12,0
+606,Shoheb,Sheikh,11,12,0
+608,Imran ,Pathan,5,12,0
+609,Chandni,Tiwari,11,12,0
+610,Pallavi,Bhandarkar,0,12,0
+611,Juned ,Qureshi,7,12,0
+612,Shilpi,Sarkar,4,12,0
+613,Sursen,Patle,7,12,0
+614,Shailendra ,Parmar,0,12,0
+618,Prashant,Waghade,4,12,0
+619,Wamendra,Punde,4,12,0
+620,Deepa ,Waghade,4,12,0
+621,Atul ,Meshram,1,12,0
+623,Daljeetkaur ,Matharu,5,12,0
+625,Rita ,Mane,4,12,0
+627,Chanda ,Marathe,6,12,0
+628,Sachin ,Kasturkar,1,12,0
+629,Rakshit ,Varu,1,12,0

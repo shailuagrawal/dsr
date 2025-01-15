@@ -1,0 +1,689 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use App\User;
+use App\Addressupdate;
+use App\Project;
+use Illuminate\Support\Facades\Hash;
+use DB;
+use Illuminate\Support\Facades\Auth;
+use App\Role;
+use App\Leaves;
+use App\Leave_approval;
+use App\Leave_categories;
+use App\Advance;
+use App\Notification;
+use Session;
+use App\Document;
+
+class EmployeesController extends Controller
+{
+	
+    public function __construct()
+    {
+       // $this->middleware('IsAdmin');
+    }	
+	
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function index(Request $request)
+    {
+        $loggedInUser = Auth::user();
+        
+        //
+        $heading = 'Employees';
+        //$employees = User::with('project','advances')->where('working_status', '=', 'Working')->orderby('emp_id')->get();
+        
+        $employees = User::with('project','advances');
+        
+        if(isset($request->s) && $request->s!=''){
+			$tmp = explode(' ', $request->s);
+			foreach($tmp as $k => $t){
+				if($k==0){
+				$employees = $employees->where('first_name', 'LIKE',"%{$t}%")->orwhere('last_name', 'LIKE',"%{$t}%");
+				}else{
+					$employees = $employees->orwhere('first_name', 'LIKE',"%{$t}%")->orwhere('last_name', 'LIKE',"%{$t}%");
+				}
+			}
+			$employees = $employees->orwhere('designation', 'LIKE',"%{$request->s}%");
+		}
+        
+        $employees = $employees->where('working_status', '=', 'Working')->orderby('emp_id')->get();
+        
+
+        
+        
+        $managerName = [];
+        $EmpAdvance = []; 
+        foreach($employees as $emp){
+            if(!empty($emp->project->manager_id)){
+    			$manager = User::findOrFail($emp->project->manager_id);
+    			if(isset($manager->first_name)){
+    				$managerName[$emp->emp_id] = "$manager->first_name $manager->last_name";
+    			}
+            }
+            
+            if(count($emp->advances)>0){
+               $totalAmount = Advance::where('user_id','=', $emp->id)->sum('amount');
+               if($totalAmount!=0){
+                $EmpAdvance[$emp->id] = $totalAmount;
+               }
+            }
+		}
+
+		
+		$array = [4,831,1280];
+		$shiftReport = DB::table('users')->where('working_status', '=', 'Working')->select('working_on_shift', DB::raw('count(*) as total'))->groupBy('working_on_shift')->get();
+		
+		$shiftwiseOnBenchEmployees = User::whereIn('project_id',  $array)->where('working_status', '=', 'Working')->get();
+		
+		$shiftEmpReport = [];
+		foreach($shiftReport as $sf){
+		    $shiftEmpReport[$sf->working_on_shift]['no_emp'] = $sf->total;
+		    $shiftEmpReport[$sf->working_on_shift]['onbench'] = 0;
+		}
+		
+		foreach($shiftwiseOnBenchEmployees as $swOnBench){
+		    if(!isset($shiftEmpReport[$swOnBench->working_on_shift])){
+		        $shiftEmpReport[$swOnBench->working_on_shift]['onbench'] = 1;
+		    }else{
+		        $shiftEmpReport[$swOnBench->working_on_shift]['onbench']++;
+		    }
+		}
+
+		        
+		$empOnProjects = DB::table('users')->where('working_status', '=', 'Working')->select('project_id', DB::raw('count(*) as totalemp'))->groupBy('project_id')->get();
+		$allEmpProject = [];
+		foreach ($empOnProjects as $empOnProject){
+		    $allEmpProject[$empOnProject->project_id] = $empOnProject->totalemp;
+		}
+		
+		//$empLeaves = Leaves::with('foruser')->where('status', '=', 2)->where('leave_from','<=',date('Y-m-d 00:00:00'))->where('leave_to','>=',date('Y-m-d 24:59:59'))->get();
+
+		$empLeaves = Leaves::with('foruser')->where(function ($query){
+		    $query = $query->where('leave_from','<=',date('Y-m-d 00:00:00'));
+		    $query = $query->where('leave_to','>=',date('Y-m-d 23:59:59'));
+		    $query = $query->where('status','=',2);
+		    return $query;
+		})->orWhere(function ($query){
+		    $query = $query->where('leave_from','>=',date('Y-m-d'));
+		    $query = $query->where('leave_to','>=',date('Y-m-d'));
+		    $query = $query->where('status','=',2);
+		    return $query;
+		})->orWhere(function ($query){
+		    $query = $query->where('leave_from','<=',date('Y-m-d'));
+		    $query = $query->where('leave_to','>=',date('Y-m-d'));
+		    $query = $query->where('status','=',2);
+		    return $query;
+		})->get();
+		
+		
+		 $allEmpLeaves = []; 
+		foreach($empLeaves as $empLeave){
+		    //$allEmpLeaves[$empLeave->user_id] = 'Leave from '. date('d-m-Y', strtotime($empLeave->leave_from)) ." to ". date('d-m-Y', strtotime($empLeave->leave_to));
+		    $allEmpLeaves[$empLeave->user_id]['leave_from'] = $empLeave->leave_from;
+		    $allEmpLeaves[$empLeave->user_id]['leave_to'] = $empLeave->leave_to;
+		    
+		}
+		
+		$GrandTotalAmount = Advance::sum('amount');
+		
+		return view('admin.employees', compact('employees', 'EmpAdvance','GrandTotalAmount','loggedInUser','managerName','heading','shiftEmpReport','allEmpProject','allEmpLeaves'));
+    }
+
+    
+    private function dateRange( $first, $last, $step = '+1 day', $format = 'Y-m-d' ) {
+        $dates = [];
+        $current = strtotime( $first );
+        $last = strtotime( $last );
+        
+        while( $current <= $last ) {
+            
+            $dates[] = date( $format, $current );
+            $current = strtotime( $step, $current );
+        }
+        
+        return $dates;
+    }
+
+
+	public function addnotice(Request $request){
+	
+		$not = Notification::findOrFail(1);
+	
+		if(isset($request->_token)){
+			$not->notice = isset($request->notice) ? $request->notice : '';
+			$not->save();
+		}
+		
+		//$notice = Notification::where('id','=',1)->first();
+		
+		return view('admin.addnotice',  compact('not'));
+	}
+
+    
+    public function dashboard()
+    {
+        //
+        $TotalEmployees = User::where('working_status', '=', 'Working')->count();
+        //$TotalOnBenchEmployees = User::where('project_id', '=', 4)->where('working_status', '=', 'Working')->count();
+        
+        $array = [4,831,1280];
+        $TotalOnBenchEmployees = User::whereIn('project_id',  $array)->where('working_status', '=', 'Working')->count();
+        
+        $TotalProjects = Project::where('active', '=', 1)->count();
+        $TotalEmployeesOnLeave = Leaves::where('leave_from', '<=', date('Y-m-d 00:00:01'))->where('leave_to', '>=', date('Y-m-d 23:59:59'))->where('status','=',2)->count();
+        
+        $shiftReport = DB::table('users')->where('working_status', '=', 'Working')->select('working_on_shift', DB::raw('count(*) as total'))->groupBy('working_on_shift')->get();
+        
+        $shiftwiseOnBenchEmployees = User::whereIn('project_id',  $array)->where('working_status', '=', 'Working')->get();
+        
+        $shiftEmpReport = [];
+        foreach($shiftReport as $sf){
+            $shiftEmpReport[$sf->working_on_shift]['no_emp'] = $sf->total;
+            $shiftEmpReport[$sf->working_on_shift]['onbench'] = 0;
+        }
+        
+        foreach($shiftwiseOnBenchEmployees as $swOnBench){
+            if(!isset($shiftEmpReport[$swOnBench->working_on_shift])){
+                $shiftEmpReport[$swOnBench->working_on_shift]['onbench'] = 1;
+            }else{
+                $shiftEmpReport[$swOnBench->working_on_shift]['onbench']++;
+            }    
+        }
+        
+        
+        //dd($shiftEmpReport);
+        
+        $report = [];
+        $report['TotalEmployees'] = $TotalEmployees;
+        $report['TotalOnBenchEmployees'] = $TotalOnBenchEmployees;
+        $report['TotalProjects'] = $TotalProjects;
+        $report['TotalEmployeesOnLeave'] = $TotalEmployeesOnLeave;
+        
+        //dd($report);
+  
+        
+        //*************************************************************************
+        $user = Auth::user();
+        $leavesObj = Leave_approval::with('employee', 'leave','allManagers')->where('approved','<',2)->where('manager_id','=',$user->id)->orderby('created_at','desc')->get();
+        
+        
+        $Leave_categories = Leave_categories::all();
+        
+        $allCategories = [];
+        foreach($Leave_categories as $Leave_category){
+            $allCategories[$Leave_category->id] =$Leave_category->category_name;
+        }
+        // dd($allCategories);
+        //dd($leavesObj);
+        
+        $data = [];
+        
+        
+        foreach($leavesObj as $k => $aLeave){
+            
+            $data[$k]['leave_approval_id'] = $aLeave->id;
+            
+            $data[$k]['leave_id'] = $aLeave->leave->id;
+            
+            foreach($aLeave->employee as $emp){
+                
+                //dd($emp);
+                $data[$k]['user_id'] = $aLeave->leave->user_id;
+                $data[$k]['name'] = "$emp->first_name $emp->last_name";
+                $data[$k]['created_at'] = date('F j, Y, g:i a', strtotime($aLeave->leave->created_at));
+                $data[$k]['leave_from'] = date('F j, Y', strtotime($aLeave->leave->leave_from));
+                $data[$k]['leave_to'] = date('F j, Y', strtotime($aLeave->leave->leave_to));
+                $data[$k]['no_working_days'] = $aLeave->leave->no_working_days;
+                $data[$k]['reason'] = $aLeave->leave->reason;
+                
+                switch ($aLeave->leave->status) {
+                    case 0:
+                        $data[$k]['status'] = 'Pending';
+                        break;
+                    case 1:
+                        $data[$k]['status'] = 'In Process';
+                        break;
+                    case 2:
+                        $data[$k]['status'] = 'Approved';
+                        break;
+                    case 3:
+                        $data[$k]['status'] = 'Rejected';
+                        break;
+                    case 4:
+                        $data[$k]['status'] = 'Cancelled';
+                        break;
+                    default:
+                        $data[$k]['status'] = 'Pending';
+                }
+                $data[$k]['status_key'] = $aLeave->leave->status;
+                $data[$k]['category'] = $allCategories[$aLeave->leave->leave_category_id];
+                $data[$k]['type'] = $aLeave->leave->leave_type > 0 ? 'Pre' : 'Post';
+                
+                
+                $data[$k]['remark'] = '';
+                
+            }
+            
+        }
+        //*************************************************************************
+
+        #dddd#
+        
+        global $requestData;
+        $requestData = [];
+        
+        $requestData['toDate'] = date('Y-m-d');
+        $requestData['fromDate'] = date('Y-m-d');
+        
+        $allDates = $this->dateRange( $requestData['fromDate'], $requestData['toDate']);
+        
+        //$data = [];
+        
+        
+        $leavesObj = Leaves::with('approval','leave_category','managerAppproval','foruser')->where('status','=',2);
+        
+        $leavesObj = $leavesObj->where( function($query) {
+            global $requestData;
+            $query = $query->where('leave_from', '>=', $requestData['fromDate']);
+            $query = $query->where('leave_from', '<=', $requestData['toDate']);
+            return $query;
+        })->orWhere( function($query) {
+            global $requestData;
+            $query = $query->where('leave_to', '>=', $requestData['fromDate']);
+            $query = $query->where('leave_to', '<=', $requestData['toDate']);
+            return $query;
+        })->orderBy('created_at','desc')->get();
+        
+        
+        
+        $empOnLeave = count($leavesObj);
+        
+        #dddd#
+        
+        return view('admin.dashboard',compact('report','shiftEmpReport','data','empOnLeave'));
+    }
+    
+    public function exemp()
+    {
+        $loggedInUser = Auth::user();
+        
+        //
+        //$employees = User::with(['project'])->where('working_status', '=', 'Left')->orderby('emp_id')->get();
+        $employees = User::with(['project'])->where('working_status', '=', 'Left')->orderby('company_left_on', 'desc')->get();
+        
+        $managerName = [];
+        foreach($employees as $emp){
+            if(!empty($emp->project->manager_id)){
+                $manager = User::findOrFail($emp->project->manager_id);
+                if(isset($manager->first_name)){
+                    $managerName[$emp->emp_id] = "$manager->first_name $manager->last_name";
+                }
+            }
+        }
+   
+        
+        $array = [4,831,1280];
+        $shiftReport = DB::table('users')->where('working_status', '=', 'Working')->select('working_on_shift', DB::raw('count(*) as total'))->groupBy('working_on_shift')->get();
+        $shiftwiseOnBenchEmployees = User::whereIn('project_id',  $array)->where('working_status', '=', 'Working')->get();
+        
+        $shiftEmpReport = [];
+        foreach($shiftReport as $sf){
+            $shiftEmpReport[$sf->working_on_shift]['no_emp'] = $sf->total;
+            $shiftEmpReport[$sf->working_on_shift]['onbench'] = 0;
+        }
+        
+        foreach($shiftwiseOnBenchEmployees as $swOnBench){
+            if(!isset($shiftEmpReport[$swOnBench->working_on_shift])){
+                $shiftEmpReport[$swOnBench->working_on_shift]['onbench'] = 1;
+            }else{
+                $shiftEmpReport[$swOnBench->working_on_shift]['onbench']++;
+            }
+        }
+  
+        
+        $empOnProjects = DB::table('users')->where('working_status', '!=', 'Working')->select('project_id', DB::raw('count(*) as totalemp'))->groupBy('project_id')->get();
+        $allEmpProject = [];
+        foreach ($empOnProjects as $empOnProject){
+            $allEmpProject[$empOnProject->project_id] = $empOnProject->totalemp;
+        }
+        
+        $heading = 'Ex Employees';
+        return view('admin.exemployees', compact('employees','loggedInUser','managerName','heading','shiftEmpReport', 'allEmpProject'));
+    }
+    
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function create()
+    {
+        //
+        $allprojects = DB::table('projects')->where('active', '=', 1)->get();
+        
+        $projects = [];
+        foreach($allprojects as $aproject){
+            $projects[$aproject->id] =$aproject->project_name;
+        }
+ 
+        
+        $roles = [];
+        $allroles = Role::all();
+        foreach($allroles as $role){
+            $roles[$role->id] = $role->name;
+        }
+        
+        krsort($roles);
+        
+        return view('admin.addemp', compact('projects','roles'));
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function store(Request $request)
+    {
+           
+        $this->validate($request, [
+            'emp_id' => 'bail|required|unique:users',
+            'first_name' => 'required|max:255',
+            'middle_name' => 'required|max:255',
+            'last_name' => 'required|max:255',
+            'password' => 'required|min:6',
+        ]);
+        
+        //
+        $user = new User();
+        
+        if ($request->file('photo')!==null && $request->file('photo')->isValid()) {
+            $user->photo = 'emp_'.$request->emp_id.'.'.$request->file('photo')->extension();
+            $request->file('photo')->move('images/employees', $user->photo);
+        }
+        
+        $user->first_name = $request->first_name;
+        $user->middle_name = $request->middle_name;
+        $user->last_name = $request->last_name;
+        $user->dob = $request->dob;
+        $user->sex = $request->sex;
+        $user->address = $request->address;
+        $user->city = $request->city;
+        $user->blood_group = $request->blood_group;
+        $user->mobile_number = $request->mobile_number;
+        $user->landline_number = $request->landline_number;
+        $user->other_contact = $request->other_contact;
+        $user->qualification = $request->qualification;
+        $user->computer_skill = $request->computer_skill;
+        $user->other_skill_experience = $request->other_skill_experience;
+        $user->total_experience = $request->total_experience;
+        $user->pre_employer = $request->pre_employer;
+        $user->typing_speed = $request->typing_speed;
+        $user->addition_skill_english = $request->addition_skill_english;
+        $user->addition_skill_html = $request->addition_skill_html;
+        $user->addition_skill_photoshop = $request->addition_skill_photoshop;
+        $user->addition_skill_php = $request->addition_skill_php;
+        $user->addition_skill_typing = $request->addition_skill_typing;
+        $user->addition_skill_webresearch = $request->addition_skill_webresearch;
+        $user->emp_id = $request->emp_id;
+        $user->user_name = $request->user_name;
+        $user->password = Hash::make($request->password);
+        $user->personal_email = $request->personal_email;
+        $user->designation = $request->designation;
+        $user->date_of_joining = $request->date_of_joining;
+        $user->email = $request->email;
+        $user->role_id = $request->role_id;
+        $user->working_status = $request->working_status;
+        $user->login_info = $request->login_info;
+        $user->remark = $request->remark;
+        $user->company_left_on = $request->company_left_on;
+        
+        $user->leaves_allotted = isset($request->leaves_allotted) ? $request->leaves_allotted : 0;
+        $user->leaves_forward = isset($request->leaves_forward) ? $request->leaves_forward : 0;
+        $user->other_leaves_allotted = isset($request->other_leaves_allotted) ? $request->other_leaves_allotted : 0;
+        
+        $user->ready_for_night_shift = $request->ready_for_night_shift;
+        $user->working_on_shift = $request->working_on_shift;
+        $user->project_id = $request->project_id;
+
+		$loggedInUser = Auth::user();
+		$user->updated_by = $loggedInUser->id;
+
+    
+        $user->save();
+ 
+        
+        if(!is_null($request->user_tag)){
+            $user->tag($request->user_tag);
+        }else{
+            $user->tag(''); 
+        }        
+       
+        return redirect(Route('admin.index'));
+    }
+
+    /**
+     * Display the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function show($id)
+    {
+        //
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function edit($id)
+    {
+
+        $user = User::findOrFail($id);
+
+        $allprojects = DB::table('projects')->where('active', '=', 1)->orderby('project_name')->get();
+        $projects = [];
+        foreach($allprojects as $aproject){
+            $projects[$aproject->id] =$aproject->project_name;
+        }
+
+        $roles = [];
+        $allroles = Role::all();
+        foreach($allroles as $role){
+            $roles[$role->id] = $role->name;
+        }
+        
+        if($user->updated_by!=0){
+         $updatedBy = User::findOrFail($user->updated_by);
+         	$lastupdatedby = "{$updatedBy->first_name} {$updatedBy->last_name} On ". date("F j, Y, g:i a", strtotime($user->updated_at));
+		}else{
+			$lastupdatedby = "--";
+		}
+		
+         $addUpdates = DB::table('addressupdates')->where('user_id', '=', $id)->orderby('created_at', 'desc')->get();
+        
+         $documents = Document::where('user_id',$id)->get(); 
+         
+        //
+        return view('admin.editemp', compact('user','addUpdates','lastupdatedby', 'projects', 'roles','documents'));
+    }
+
+
+    public function upload_document(Request $request, $user_id=0){
+
+          $rules = [
+            'doc_title' => 'required',
+            'document' => 'required|max:8192|mimes:doc,pdf,docx,jpeg,jpg,png,gif',
+        ];
+
+
+        $errors = $this->validate($request, $rules);
+
+        $emp = User::findOrfail($user_id);
+
+        $data = [];
+        $data['user_id'] = $user_id;
+        $data['doc_title'] = $request->doc_title;
+        
+        if($request->id>0){
+            $document = Document::findOrfail($request->id);
+            $result = $document->update($data);
+        }else{
+            $document = Document::create($data);
+        }
+
+        if(isset($request->document)){
+            //$emp->addMedia($request->document)->toMediaCollection('documents', 'documents');
+
+            if ($request->file('document')!==null && $request->file('document')->isValid()) {
+
+                $documentName = 'doc_'.$document->id.'.'.$request->file('document')->extension();
+                $request->file('document')->move('images/employees/'.$user_id, $documentName);
+
+                $updateFilName = [];
+                $updateFilName['file_name'] = $documentName;
+                $result = $document->update($updateFilName);
+
+            }
+
+        }
+        
+        Session::flash('flash.message', "Document has been added successfully.");
+
+        return redirect(Route('admin.edit', $user_id));   
+    }
+
+
+    public function download_document($id=0){
+
+        try{
+
+            $document = Document::findOrfail($id);
+
+            $publicUrl= public_path(). "/images/employees/{$document->user_id}/{$document->file_name}";
+
+            return response()->download(public_path("images/employees/{$document->user_id}/{$document->file_name}"));
+
+            //return response()->download($publicUrl, null,[],null);
+
+        } catch (\Exeption $e){
+            return "File not found";
+        }
+
+    }
+
+    public function delete_document($doc_id=0){
+        $document = Document::findOrfail($doc_id);
+        $document->delete();
+
+        unlink(public_path("images/employees/{$document->user_id}/{$document->file_name}"));
+
+        Session::flash('flash.message', "Document has been deleted successfully.");
+
+        return redirect(Route('admin.edit', $document->user_id));           
+    }
+
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function update(Request $request, $id)
+    {
+        //
+        $this->validate($request, [
+            'first_name' => 'required|max:255',
+            'last_name' => 'required|max:255',
+        ]);
+        //
+        $user = User::findOrFail($id);
+        
+        if ($request->file('photo') && $request->file('photo')->isValid()) {
+            $user->photo = 'emp_'.$id.'.'.$request->file('photo')->extension();
+            $request->file('photo')->move('images/employees', $user->photo);
+        }
+        
+        $user->first_name = $request->first_name;
+        $user->middle_name = $request->middle_name;
+        $user->last_name = $request->last_name;
+        $user->dob = $request->dob;
+        $user->sex = $request->sex;
+        $user->address = $request->address;
+        $user->city = $request->city;
+        $user->blood_group = $request->blood_group;
+        $user->mobile_number = $request->mobile_number;
+        $user->landline_number = $request->landline_number;
+        $user->other_contact = $request->other_contact;
+        $user->qualification = $request->qualification;
+        $user->computer_skill = $request->computer_skill;
+        $user->other_skill_experience = $request->other_skill_experience;
+        $user->total_experience = $request->total_experience;
+        $user->pre_employer = $request->pre_employer;
+        $user->typing_speed = $request->typing_speed;
+        $user->addition_skill_english = $request->addition_skill_english;
+        $user->addition_skill_html = $request->addition_skill_html;
+        $user->addition_skill_photoshop = $request->addition_skill_photoshop;
+        $user->addition_skill_php = $request->addition_skill_php;
+        $user->addition_skill_typing = $request->addition_skill_typing;
+        $user->addition_skill_webresearch = $request->addition_skill_webresearch;
+        $user->user_name = $request->user_name;
+        if($request->password!=''){
+            $user->password = Hash::make($request->password);
+        }
+        $user->personal_email = $request->personal_email;
+        $user->designation = $request->designation;
+        $user->date_of_joining = $request->date_of_joining;
+        $user->email = $request->email;
+        $user->role_id = $request->role_id;
+        $user->working_status = $request->working_status;
+        $user->login_info = $request->login_info;
+        $user->remark = $request->remark;
+        $user->company_left_on = $request->company_left_on;
+        $user->leave_allotted = $request->leave_allotted;
+        $user->leave_forwarded = $request->leave_forwarded;
+        $user->other_leave = $request->other_leave;
+        $user->ready_for_night_shift = $request->ready_for_night_shift;
+        $user->working_on_shift = $request->working_on_shift;
+        $user->project_id = $request->project_id;
+
+		$loggedInUser = Auth::user();
+		$user->updated_by = $loggedInUser->id;
+        
+        $user->save();
+        
+
+        if(!is_null($request->user_tag)){
+            $user->retag($request->user_tag); 
+        }else{
+            $user->retag(''); 
+        }
+        
+        
+        return redirect(Route('admin.index'));
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy($id)
+    {
+        //
+    }
+    
+}

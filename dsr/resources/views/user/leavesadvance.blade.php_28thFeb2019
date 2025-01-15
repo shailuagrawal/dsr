@@ -1,0 +1,112 @@
+@extends('layouts.app')
+
+@section('content')
+
+<div class="row">
+                <div class="col-lg-12">
+                    <h3 class="page-header">Leaves & Advance Submission</h3>
+                </div>
+                <!-- /.col-lg-12 -->
+            </div>
+            <!-- /.row -->
+            <div class="row">
+                <div class="col-lg-12">
+
+								                             
+            {!! Form::open(['method' => 'post', 'action' => 'UserController@savela', 'files' => true ]) !!}
+            {{ csrf_field() }}
+            	<div class="col-lg-6">
+            
+            
+            	    @if (count($errors) > 0)
+            		<div class="alert alert-danger">
+            		    <ul>
+            			@foreach ($errors->all() as $error)
+            			    <li>{{ $error }}</li>
+            			@endforeach
+            		    </ul>
+            		</div>
+            	    @endif
+
+                	<div class="form-group">
+                	{!! Form::label('title', 'Subject') !!}
+                	{!! Form::text('subject', "Leaves & Advance - $user->first_name $user->last_name", ['class'=>'form-control', 'id'=>'subject', 'required'=>'required']) !!}
+                	</div>
+                
+                	<div class="form-group">
+                	{!! Form::label('title', 'Employee id') !!}
+                	{!! Form::number('emp_id', $user->emp_id, ['class'=>'form-control', 'id'=>'emp_id', 'required'=>'required', 'min'=>'1']) !!}
+                	</div>
+                
+                	<div class="form-group">
+                	{!! Form::label('title', 'L & A for the month') !!}
+                	<?php 
+                	$months = [];
+                	/*
+                	$months[1] = 'January';
+                	$months[2] = 'Fabruary';
+                	$months[3] = 'March';
+                	$months[4] = 'April';
+                	$months[5] = 'May';
+                	$months[6] = 'June';
+                	$months[7] = 'July';
+                	$months[8] = 'August';
+                	$months[9] = 'September';
+                	$months[10] = 'October';
+                	$months[11] = 'November';
+                	$months[12] = 'December';
+                	*/
+                	$lastMonth = date('m-Y', strtotime(date('Y-m')." -1 month"));
+                	$months[$lastMonth] = date('F Y', strtotime(date('Y-m')." -1 month"));
+                	$currentMonths = date('m-Y');
+                	$months[$currentMonths] = date('F Y');
+                	
+                	
+                	?>
+                	 {!! Form::select('month_year',$months, null, ['class'=>'form-control', 'id'=>'month', 'style'=>'width:200px;float:none;']) !!}
+                	 <!--  {!! Form::select('month',$months, null, ['class'=>'form-control', 'id'=>'month', 'style'=>'width:150px;']) !!}-->
+                	</div>
+                
+                	<div class="form-group">
+                	{!! Form::label('title', 'Leaves') !!}
+                	{!! Form::number('leaves', null, ['class'=>'form-control', 'id'=>'leaves', 'min'=>'0', 'max'=>'31']) !!}
+                	</div>
+                
+                	<div class="form-group">
+                	{!! Form::label('title', 'Advance (Rs)') !!}
+                	{!! Form::number('advance', null, ['class'=>'form-control', 'id'=>'advance']) !!}
+                	</div>
+               </div>
+             <div class="col-lg-6">
+                	
+                	<div class="form-group">
+                	{!! Form::label('title', 'Half Day') !!}
+                	{!! Form::number('half_day', null, ['class'=>'form-control', 'id'=>'half_day', 'min'=>'0', 'max'=>'31']) !!}
+                	</div>
+                
+                	<div class="form-group">
+                	{!! Form::label('title', 'Half Day Dates') !!}
+                	{!! Form::text('half_day_dates', null, ['class'=>'form-control', 'id'=>'half_day_dates']) !!}
+                	</div>
+                
+                	<div class="form-group">
+                	{!! Form::label('title', '4+ Late Marks only') !!}
+                	{!! Form::number('late_mark', null, ['class'=>'form-control', 'id'=>'late_mark', 'min'=>'0', 'max'=>'31']) !!}
+                	</div>
+                
+                	<div class="form-group">
+                	{!! Form::label('title', 'Overtime') !!}
+                	{!! Form::text('overtime', null, ['class'=>'form-control', 'id'=>'overtime']) !!}
+                	</div>	
+                	
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                	<button type="reset" class="btn btn-primary">Reset</button>
+                                                        	
+                {!! Form::close() !!}
+                </div>   
+                </div>
+                <!-- /.col-lg-12 -->
+            </div>
+            <!-- /.row -->
+            
+@endsection

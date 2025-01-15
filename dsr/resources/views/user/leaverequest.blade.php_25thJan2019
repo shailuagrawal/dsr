@@ -1,0 +1,181 @@
+@extends('layouts.app')
+
+@section('content')
+
+<div class="row">
+                <div class="col-lg-12">
+                    <h3 class="page-header">Leave Application</h3>
+                </div>
+                <!-- /.col-lg-12 -->
+            </div>
+            <!-- /.row -->
+            <div class="row">
+      <div class="panel panel-primary">
+                            <div class="panel-heading">
+                               <strong>{{$otherinfo['employeeName']}} (Current Project: {{$otherinfo['employeeProject']}})</strong> 
+                            </div>
+                            <div class="panel-body">             
+                <div class="col-lg-12">
+                         {!! Form::open(['method' => 'post', 'action' => 'UserController@saveleave', 'files' => true ]) !!}
+                           {{ csrf_field() }}  
+                                     
+ 								<div class="col-lg-6">
+								
+                                    @if (count($errors) > 0)
+                                        <div class="alert alert-danger">
+                                            <ul>
+                                                @foreach ($errors->all() as $error)
+                                                    <li>{{ $error }}</li>
+                                                @endforeach
+                                            </ul>
+                                        </div>
+                                    @endif          					 
+
+                                     <div class="form-group">
+                                        {!! Form::label('title', 'Leave From') !!}
+                                        {!! Form::date('leave_from', null, ['class'=>'form-control', 'id'=>'leave_from']) !!}
+                                     </div>   
+                                        
+                                     <div class="form-group">
+                                        {!! Form::label('title', 'Leave To') !!}
+                                        {!! Form::date('leave_to', null, ['class'=>'form-control', 'id'=>'leave_to']) !!}                                              
+                                    </div>   
+                                                                                           					                    
+                                     <div class="form-group">
+                                        {!! Form::label('title', 'Number Of Working Days') !!}
+                                        {!! Form::number('no_working_days', null, ['class'=>'form-control', 'id'=>'no_working_days']) !!}
+                                    </div>   
+
+									<div class="form-group">
+                                        {!! Form::label('title', 'Select Leave Category') !!}
+                                        {!! Form::select('leave_category_id',$leave_categories, null, ['class'=>'form-control', 'id'=>'leave_categories']) !!}
+                                        <p><small>(for ex. General, VVS, Medical) </small></p>
+                                    </div> 
+
+									<div class="form-group">
+                                        {!! Form::label('title', 'Reason for leave') !!}
+                                        {!! Form::textarea('reason', null, ['class'=>'form-control', 'id'=>'reason' ]) !!}
+                                    </div>                                        		
+								
+
+                                    <div class="form-group">
+                                        {!! Form::label('title', 'Take approval of') !!}<br>
+                                        	@foreach($managers as $man_id => $man)
+            									<?php
+                									$disabled = [];
+                									$checkedOrNot = false;
+            									
+            								        if($empManager->project->manager_id==$man_id){
+                                                        $disabled = ['disabled'=>'disabled'];
+                                                        $checkedOrNot = true;
+                                                    }
+                                                 ?>
+                                                @if($checkedOrNot)
+                                        			{!! Form::hidden('managers[]', $man_id) !!}
+                                        		@else
+                                        			{!! Form::checkbox('managers[]', $man_id, $checkedOrNot, $disabled ) !!} {{$man}} <br>
+                                        		@endif  
+                                        	@endforeach
+                                        	<p><small>[Select checkbox whom you need to send your Application for approval.]</small></p>
+                                    </div>         
+
+                                                               
+                                                               
+									                                                               
+                                <button type="submit" class="btn btn-primary">Submit Button</button>
+                                <button type="reset" class="btn btn-primary">Reset Button</button>
+                                <p>&nbsp;</p>								                             
+								</div>
+						{!! Form::close() !!}      
+								
+								
+								<div class="col-lg-6">
+
+
+    								<?php 
+    								
+    								$forMonth = date('m', strtotime($user->date_allotted)); 
+    								
+    								if($forMonth <= 6){
+    								    $session = "Session : Jan ". date('Y', strtotime($user->date_allotted)) . " to Jun " . date('Y', strtotime($user->date_allotted));
+    								}else{
+    								    $session = "Session : Jul ". date('Y', strtotime($user->date_allotted)) . " to Dec " . date('Y', strtotime($user->date_allotted));
+    								}
+    								?>
+    								<h4>Leave status of applicant <br> {{$session}}</h4>
+    								<ul>
+    								 <li><strong>Leaves :</strong> (Allotted: {{$user->leaves_allotted}}, Forwarded: {{$user->leaves_forward}}, Other: {{$user->other_leaves_allotted}}): {{$userLeaveHistory['totalAllotted']}}</li>
+    								 <li><strong>Leaves Taken:</strong> {{$userLeaveHistory['leaveTaken']}}</li>
+    								 <?php
+    								 $leaveBalColor = '';
+    								 if($userLeaveHistory['leaveBalance']<0){
+    								     $leaveBalColor = 'red';
+    								 }
+    								 ?>
+    								 <li style="color:{{$leaveBalColor}}"><strong >Leaves Balance:</strong> {{$userLeaveHistory['leaveBalance']}}</li>
+ 									<li><strong>Leaves Type:</strong> {{$userLeaveHistory['leaveType'][1]}} Pre ({{$userLeaveHistory['prePercent']}}%), {{$userLeaveHistory['leaveType'][0]}} Post ({{$userLeaveHistory['postPercent']}}%)</li>
+    								</ul> 
+    								
+    								
+    								
+    								
+    								<br>
+    								
+    																
+								<h4>Details of leave history</h4>
+
+                                <ul>
+                                <li><strong>Total Leaves :</strong> {{$otherinfo['total_leaves']}}</li>
+                                @foreach($leaveCategories as $cat => $catCount)
+                                <li><strong>{{$cat}} :</strong> {{$catCount}}</li>
+                                @endforeach
+
+                                <li><strong>Leaves Type:</strong> {{$otherinfo['preLeave']}} Pre ({{$otherinfo['prePercent']}}%), {{$otherinfo['postLeave']}} Post ({{$otherinfo['postPercent']}}%)</li>
+                                </ul>
+								
+								<br>
+								
+								<table width="100%" class="table table-striped table-bordered table-hover" id="dataTables-example1">
+                        <thead>
+                            <tr>
+                            	
+                                <th>From</th>
+                                <th>To</th>
+                                <th>Days</th>
+                                <th>Status</th>
+                                <th>Category</th>
+                                <th>Type</th>
+                            </tr>
+                        </thead>
+                        <tbody>                        
+                        @foreach($data as $k => $aLeave)     
+                            <?php
+                            $rowStyle = '';
+                            if($aLeave['type']=='Post'){
+                                $rowStyle = 'background-color:#f2dede';
+                            }
+                            ?>         
+                                     
+                            <tr style="{{$rowStyle}}">
+                                <td>{{$aLeave['leave_from']}}</td>
+                                <td>{{$aLeave['leave_to']}}</td>
+                                <td>{{$aLeave['no_working_days']}}</td>
+                                <td>{{$aLeave['status']}}</td>
+                                <td>{{$aLeave['category']}}</td>
+                                <td>{{$aLeave['type']}}</td>
+                                
+                            </tr>
+           					                    
+                        @endforeach     
+							
+						</tbody>
+                    </table>				
+								</div>             
+                </div>
+                <!-- /.col-lg-12 -->
+                </div>
+                </div>
+            </div>
+            <!-- /.row -->
+            
+@endsection

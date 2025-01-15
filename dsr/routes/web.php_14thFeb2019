@@ -1,0 +1,142 @@
+<?php
+
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+|
+| Here is where you can register web routes for your application. These
+| routes are loaded by the RouteServiceProvider within a group which
+| contains the "web" middleware group. Now create something great!
+|
+*/
+
+Route::get('/', function () {
+    return view('login');
+});
+
+
+
+date_default_timezone_set('Asia/Kolkata');
+
+//Route::get('/admin/addemp', 'employeesController@create');
+
+Route::group(['middleware' => ['auth','IsAdmin']], function() {
+    
+    Route::get('/admin/employees', 'EmployeesController@index');
+
+    Route::get('/admin/exemp', 'EmployeesController@exemp');
+    
+    Route::get('/projects/archive', 'ProjectsController@archive');
+    
+    Route::get('/admin/dashboard', 'EmployeesController@dashboard');
+    
+    Route::resource('/admin', 'EmployeesController');
+    
+    Route::resource('/projects', 'ProjectsController');
+    
+    Route::any('/projectswise/dsr', 'ProjectsController@dsr');
+    
+    Route::any('/leave/browse', 'UserController@leavebrowse');
+    
+    Route::any('/absentee/report/{t?}', 'UserController@absenteeReport');
+    
+    Route::post('/admin/leave/update', 'ProjectsController@leaveupdate');
+    
+    Route::get('/leave/requests', 'ProjectsController@leaverequests');
+   
+    Route::post('/leave/update/ajax','AjaxController@leaveupdate');
+    
+    Route::any('/leave/report', 'ProjectsController@leavesAdvaceReport');
+    
+    Route::resource('pcs', 'PcController');
+
+    Route::any('/sr/browser', 'PcController@srbrowser');
+    
+    Route::get('/user/search/{s?}', 'UserController@search');
+    
+    Route::any('/import/importtimelog/{m?}', 'UserController@importtimelog');
+    
+    Route::any('/employees/projectwise/{id?}', 'ProjectsController@empprojectwise');
+
+    Route::any('/employees/project/report/{id?}', 'ProjectsController@empprojectwisereport');
+    
+    Route::any('/employees/leavestatus/update', 'UserController@updateLeaveStatus');
+    
+    Route::any('/download/leavestatus/{type?}', 'UserController@downloadLeaveStatus');
+    
+    Route::any('/ajax/get/shift/{id?}', 'AjaxController@getUserShift');
+    
+    Route::any('/ajax/get/project/{id?}', 'AjaxController@getUserProject');
+    
+    Route::any('/ajax/change/shift/{id}/{time}', 'AjaxController@changeUserShift');
+    
+    Route::any('/ajax/change/project/{id}/{project_id}', 'AjaxController@changeUserProject');
+    
+    Route::any('/migrate/leaves/', 'UserController@migrateLeaves');
+    
+    Route::any('/advance/history/{id}/{aid?}', 'UserController@advanceHistory');
+    
+    Route::any('/my/advance/history', 'UserController@myAdvanceHistory');
+    
+});
+
+
+Auth::routes();
+
+
+Route::group(['middleware' => ['auth']], function() {
+        
+    Route::get('/home', 'HomeController@index');
+    
+    Route::get('/user/index', 'UserController@index');
+    
+    Route::any('/user/listdsr/{id?}', 'UserController@listdsr');
+    
+    Route::get('/user/profile/{s?}', 'UserController@profile');
+    
+    Route::post('/user/savedsr', 'UserController@savedsr');
+    
+    Route::get('/user/dsr/{id}/detail', 'UserController@dsrdetail');
+
+    Route::get('/project/{id}/info', 'UserController@projectinfo');
+    
+    Route::any('/user/leaves/{id?}', 'UserController@leaves');
+    
+    Route::get('/user/leave/request', 'UserController@leaverequest');
+    
+    Route::post('/user/saveleave', 'UserController@saveleave');
+    
+    Route::get('/leave/{id}/edit/{e?}', 'UserController@editleave');
+    
+    Route::get('/leaves/advance', 'UserController@leaveAdvance');
+    
+    Route::get('/la/history', 'UserController@myLeaveHistory');
+    
+    Route::post('/user/savela', 'UserController@savela');
+    
+    Route::any('/ajax/user/photo/{id}', 'AjaxController@getUserPhoto');
+    
+    Route::get('/system/request', 'PcController@srRequest');
+    
+    Route::post('/system/request/add', 'PcController@storesr');
+    
+    Route::any('/srrequest/history', 'PcController@srhistory');
+    
+    Route::any('/srrequest/detail/{id?}', 'PcController@srdetail');
+    
+    Route::any('/update/profile', 'UserController@updateprofile');
+    
+    Route::get('/user/timelog/{id?}', 'UserController@timelog');
+    
+    Route::any('/ajax/user/timelog/{id?}', 'AjaxController@getTimeLog');
+});
+
+
+    
+    
+    
+    
+    
+    
+    

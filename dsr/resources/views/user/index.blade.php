@@ -1,0 +1,258 @@
+@extends('layouts.app')
+
+@section('content')
+
+<div class="row">
+
+
+            <div class="col-lg-12">
+            <br>
+            <div class="row">
+            <ul>
+            @foreach ($sr as $k => $anSr)
+            <li><a href="{{url('/')}}/srrequest/detail/{{$anSr->id}}">Your System Request SR{{$anSr->id}}</a><br></li>
+            @endforeach
+            </ul>
+
+            <ul>
+            @foreach ($leaves as $k => $aLeave)
+            <li><a href="{{url('/')}}/leave/{{$aLeave->id}}/edit">Your Leave Application LA{{$aLeave->id}}</a><br></li>
+            @endforeach
+            </ul>
+
+
+            </div>
+            </div>
+            
+                <div class="col-lg-12">
+                    <h3 class="page-header">Write DSR</h3>
+                </div>
+                <!-- /.col-lg-12 -->
+            </div>
+            <!-- /.row -->
+            <div class="row">
+
+                <div class="col-lg-6">
+                
+                {!! Form::open(['method' => 'post', 'action' => 'UserController@savedsr', 'files' => true ]) !!}
+                
+                    
+                    <div id="otherProjects"></div>
+				    	
+
+
+					<button type="submit" class="btn btn-primary" id='senddsr'>Send DSR</button>
+                    <button type="reset" class="btn btn-primary">Reset</button>                            
+                    								
+                    {!! Form::close() !!}
+                    </br></br></br></br>
+                    
+                </div>
+                <!-- /.col-lg-12 -->
+                
+                                <div class="col-lg-6">
+    				<div class="panel panel-primary">
+                            <div class="panel-heading">
+                               <strong>Projects</strong>
+                            </div>
+                            <!-- /.panel-heading -->
+                            <div class="panel-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-bordered table-hover">
+                                        <thead>
+                                            <tr>
+                                                <!-- <th>Sr.No</th> -->
+                                                <th>Name</th>
+                                                <th>&nbsp;</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                        	@foreach($allProjects as $k => $aProject)
+                                        	<?php
+                                        	$checkedOrNot = '';
+                                        	if($aProject->id == $projectInfo->id){
+                                        	    $checkedOrNot = 'checked';
+                                        	}else{
+                                        	    $checkedOrNot = '';
+                                        	}
+                                        	?>
+                                                <tr>
+                                                    <!-- <td>{{$k + 1}}</td> -->
+                                                    <td>{{ $aProject->project_name }}</td>
+                                                    
+                                                    <?php 
+													$isDisabled = '';
+													if($aProject->id==831 || $aProject->id==1280){
+														//$isDisabled = 'disabled';
+													}
+													?>
+
+                                                    <td><input type='checkbox' value="{{ $aProject->id }}" {{$isDisabled}} <?php echo $checkedOrNot; ?> class="projectchekbox"></td>
+                                                </tr>
+                                           
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <!-- /.table-responsive -->
+                            </div>
+                            <!-- /.panel-body -->
+                        </div>
+                </div>
+                
+                
+            </div>
+            <!-- /.row -->
+
+            
+@endsection
+
+
+@section('javascriptsection')
+           
+<script type="text/javascript">
+<!--
+
+
+var placeholder_subject = "{{$placeholder_subject}}";
+
+
+
+
+function getProjectInformation(selectedId){
+
+	var selectedProject = selectedId;
+	
+	 $.get("{{url('/')}}/project/"+selectedId+"/info", function(data, status){
+
+	     	var projectObj = JSON.parse(data);
+				var rowHTML;
+
+				rowHTML = '<div class="panel panel-primary">' + 
+					'<div class="panel-heading">' +
+				'<strong>Your Project :</strong> ' + projectObj.project.project_name +
+	 		'</div>' +
+	 		'<div class="panel-body">' +
+	 			'<div class="row">' +
+	 				'<input name="project['+ projectObj.project.id + '][project_id]" value="' + projectObj.project.id + '" type="hidden">' +
+	 				'<div class="col-lg-12">' +
+	 					'<div class="form-group">' +
+	 					'<label for="title">Hours</label>' +
+	 					'<input class="hours_worked" style="width:50px" id="hours_worked" min="0" max="24" required="" name="project['+ projectObj.project.id +'][hours_worked]" type="number"> :' + 
+	 					'<input class="min_worked" style="width:50px" id="hours_worked" min="0" max="59" required="" name="project[' + projectObj.project.id + '][min_worked]" value="0" type="number">   (Hrs : Min)' +                                               
+	 					'</div>'+
+
+	 					'<div class="form-group">'+
+	         		    '<label for="title">Subject</label>'+
+	         		    '<input class="form-control" id="subject" name="project['+ projectObj.project.id +'][subject]" type="text" value="'+ placeholder_subject +'">'+
+	         		'</div>';
+	 			  
+	 
+	 			for(i=0; i<projectObj.projectfields.length; i++){
+	 
+	 	    	   if (typeof projectObj.projectfields[i].break !== 'undefined') {
+	 	    		   rowHTML = rowHTML + '<hr>';
+	 	    	   }else{
+	     			rowHTML = rowHTML + '<div class="form-group">' + 
+	     						'<label for="title">'+ projectObj.projectfields[i].title +'</label>';
+
+	     			if(projectObj.projectfields[i].type=='textarea'){
+	     				rowHTML = rowHTML + '<textarea class="form-control" id="project_' + projectObj.project.id + '_Title1" name="project[' + projectObj.project.id + ']['+ projectObj.projectfields[i].field +']" rows="3" ></textarea>';
+	     			}else{			
+	     				rowHTML = rowHTML + '<input class="form-control" id="project_' + projectObj.project.id + '_Title1" name="project[' + projectObj.project.id + ']['+ projectObj.projectfields[i].field +']" type="'+ projectObj.projectfields[i].type +'">';
+	     			}	
+						 
+	         		if((typeof projectObj.projectfields[i].target !== 'undefined')){
+	         			rowHTML = rowHTML + "<p class='text-danger'>Target: " + projectObj.projectfields[i].target + "</p>";	
+	         		}
+
+	         		rowHTML = rowHTML + '</div>';
+												
+	 	    	   }
+	 			}
+	 
+	 					rowHTML = rowHTML + '</div>' +
+	 			'</div>' +
+	 		'</div>' +
+	 	'</div>';
+
+	     	//data = $( "#otherProjects" ).html() + "<div id='project"+ selectedProject + "'>" + rowHTML + "</div>";	
+	     	//$("#otherProjects").html(data);
+
+	 		data = "<div id='project"+ selectedProject + "'>" + rowHTML + "</div>";
+	     	$("#otherProjects").append(data);
+	     			
+	     	
+	     });
+     
+}
+
+
+$(document).ready(function(){
+	getProjectInformation(<?php echo $projectInfo->id; ?>);
+});
+
+
+$("#senddsr").click(function(){
+
+	var d = new Date();
+	var n = d.getDay();
+
+	if(n==6){
+		var mustBeTotalMinutes = 240;
+	}else{
+		var mustBeTotalMinutes = 450;
+	}
+	
+	
+	var total_hours;
+	var total_hours = 0;
+	$(".hours_worked").each(function() {
+		total_hours = total_hours + parseInt($(this).val());
+	});
+
+	var total_mins;
+	var total_mins = 0;
+	$(".min_worked").each(function() {
+		total_mins = total_mins + parseInt($(this).val());
+	});
+	
+	totalminutesWorked = (total_hours * 60) + total_mins; 
+
+	totalHWorked = totalminutesWorked / 60;  
+	totalMWorked = totalminutesWorked % 60;
+
+	var ActualTimeWorked;
+	ActualTimeWorked = (Math.floor(totalHWorked)+':'+totalMWorked);
+	
+	if(totalminutesWorked < mustBeTotalMinutes){
+		
+		if(n==6){
+			alert("Your total calculated time is "+ActualTimeWorked+" hours. which is less than 4:00 hours. Please enter your correct worked time in projects and remaining time enter in '!On Bench'");
+		}else{
+			alert("Your total calculated time is "+ActualTimeWorked+" hours. which is less than 7:30 hours. Please enter your correct worked time in projects and remaining time enter in '!On Bench'");	
+		}
+		return false; 
+	}
+	
+	
+	
+	var allCheckboxes = document.getElementsByName("leave_id[]");
+	for(i=0; i< allCheckboxes.length; i++){
+		allCheckboxes[i].checked = document.getElementById("checkallleaves").checked;
+	}
+});
+
+$(".projectchekbox").click(function(){
+
+	var selectedProject = this.value;
+	if($(this).prop("checked") == true){
+		getProjectInformation(selectedProject);
+	}else{
+		$("#project"+selectedProject).detach();
+	}
+}); 
+
+//-->
+</script>
+@endsection

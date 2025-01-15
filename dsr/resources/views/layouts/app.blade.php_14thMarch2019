@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>PHP Workshop - Daily Status Report</title>
+
+
+
+    <!-- Bootstrap Core CSS -->
+    <link href="{{url('/')}}/vendor/bootstrap/css/bootstrap.css" rel="stylesheet">
+
+    <!-- MetisMenu CSS -->
+    <link href="{{url('/')}}/vendor/metisMenu/metisMenu.min.css" rel="stylesheet">
+
+
+    <!-- DataTables CSS -->
+    <link href="{{url('/')}}/vendor/datatables-plugins/dataTables.bootstrap.css" rel="stylesheet">
+
+    <!-- DataTables Responsive CSS -->
+    <link href="{{url('/')}}/vendor/datatables-responsive/dataTables.responsive.css" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link href="{{url('/')}}/dist/css/sb-admin-2.css" rel="stylesheet">
+
+    <!-- Custom Fonts -->
+    <link href="{{url('/')}}/vendor/font-awesome/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+ 	
+ 
+
+</head>
+
+<body >
+
+    <div id="wrapper">
+
+        <!-- Navigation -->
+        <nav class="navbar navbar-default navbar-static-top" role="navigation" style="margin-bottom: 0">
+        	
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                
+                <img src="{{url('/')}}/images/logo.gif" alt='' />
+                @if(date('m-d', strtotime(Auth::user()->dob)) == date('m-d'))
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <img src="{{url('/')}}/images/birthday.png" height="40" width="" alt='' />
+                @endif
+				                
+            </div>
+
+            <!-- /.navbar-header -->
+            <ul class="nav navbar-top-links navbar-right">
+            
+            <?php 
+            use App\Leave_approval;
+            use App\Advance;
+            $user = Auth::user();
+            
+            $leaves = Leave_approval::with('leave')->where('approved','<',2)->where('manager_id','=',$user->id)->get();
+            $totalLeaveRequests = count($leaves);
+
+            $userAdvance = Advance::with('foruser')->where('user_id', '=',$user->id)->where('viewed','=',0)->orderBy('ondate','asc')->get();
+            $totaluserAdvance = count($userAdvance);
+            
+            ?>
+            	<!-- 
+               <li class="dropdown">
+                    <a class="dropdown-toggle" data-toggle="dropdown" href="#">
+                        <i class="fa fa-envelope fa-fw"></i> <i class="fa fa-caret-down"></i>
+                    </a>
+                    <ul class="dropdown-menu dropdown-messages">
+                        <li>
+                            <a href="#">
+                                <div>
+                                    <strong>John Smith</strong>
+                                    <span class="pull-right text-muted">
+                                        <em>Yesterday</em>
+                                    </span>
+                                </div>
+                                <div>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque eleifend...</div>
+                            </a>
+                        </li>
+                        <li class="divider"></li>
+                        <li>
+                            <a class="text-center" href="#">
+                                <strong>Read All Messages</strong>
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+				-->
+				@if($totalLeaveRequests>0)				
+                <li class="dropdown">
+                    <a class="dropdown-toggle" data-toggle="dropdown" href="#">
+                    <button type="button" class="btn btn-danger btn-circle"><?php echo count($leaves);?></button>
+                        <i class="fa fa-bell fa-fw"></i> <i class="fa fa-caret-down"></i>
+                    </a>
+                    <ul class="dropdown-menu dropdown-alerts" >
+                        <li class="divider"></li>
+                        <li>
+                            <a href="{{url('/')}}/leave/requests">
+                                <div>
+                                    <i class="fa fa-tasks fa-fw"></i>Leave requests
+                                    <span class="pull-right text-muted small"><?php echo count($leaves);?></span>
+                                </div>
+                            </a>
+                        </li>
+                        <li class="divider"></li>
+                        <li>
+                            <a class="text-center" href="{{url('/')}}/leave/requests">
+                                <strong>See All</strong>
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                @endif
+
+				@if($totaluserAdvance>0)				
+                <li class="dropdown">
+                    <a class="dropdown-toggle" data-toggle="dropdown" href="#">
+                    <button type="button" class="btn btn-danger btn-circle"><?php echo $totaluserAdvance;?></button>
+                        <i class="fa fa-bell fa-fw"></i> <i class="fa fa-caret-down"></i>
+                    </a>
+                    <ul class="dropdown-menu dropdown-alerts" >
+                        <li class="divider"></li>
+                        <li>
+                            <a href="{{url('/')}}/my/advance/history">
+                                <div>
+                                    <i class="fa fa-tasks fa-fw"></i>Advance Update
+                                    <span class="pull-right text-muted small"><?php echo $totaluserAdvance;?></span>
+                                </div>
+                            </a>
+                        </li>
+                       
+                       
+                    </ul>
+                </li>
+                @endif                
+                
+                                            
+                 <!-- /.dropdown -->
+                <li class="dropdown">
+                    <a class="dropdown-toggle" data-toggle="dropdown" href="#">
+                        <i class="fa fa-user fa-fw"></i> <i class="fa fa-caret-down"></i>
+                    </a>
+                    <ul class="dropdown-menu dropdown-user">
+                        <li><a href="{{url('/')}}/user/profile"><i class="fa fa-user fa-fw"></i>{{ Auth::user()->first_name }} {{ Auth::user()->last_name }}</a>
+                        </li>
+                        <li class="divider"></li>
+                        <li>
+                        	<form id='logoutForm' action="{{url('/')}}/logout" method="post">
+                                <button type="submit"  class="btn btn-lg btn-success btn-block">
+                                    {{ __('Logout') }}
+                                </button>
+                        		@csrf
+                        	</form>
+                        </li>
+                    </ul>
+                    <!-- /.dropdown-user -->
+                </li>
+                <!-- /.dropdown -->
+            </ul>
+            <!-- /.navbar-top-links -->
+
+            <div class="navbar-default sidebar" role="navigation">
+                <div class="sidebar-nav navbar-collapse">
+                    <ul class="nav" id="side-menu">
+                    
+                    @if(Auth::user()->role_id == 1)
+                    	
+                    	{!! Form::open(['method' => 'get', 'action' => 'EmployeesController@index', 'files' => true ]) !!}
+                        <li class="sidebar-search">
+                            <div class="input-group custom-search-form">
+                                <input type="text" class="form-control" name="s" value="" placeholder="Search...">
+                                <span class="input-group-btn">
+                                    <button class="btn btn-default" type="submit">
+                                        <i class="fa fa-search"></i>
+                                    </button>
+                                </span>
+                            </div>
+                            <!-- /input-group -->
+                        </li>
+						{!! Form::close() !!}	                     
+                        
+                    @endif    
+                        
+                        
+                        
+                        @if(Auth::user()->role_id == 1)
+                        
+                        <li>
+                            <a href="{{url('/')}}/admin/dashboard"><i class="fa fa-dashboard fa-fw"></i> Dashboard</a>
+                        </li>
+
+                        <li>
+                            <a href="#"><i class="fa fa-table fa-fw"></i> Projects<span class="fa arrow"></span></a>
+                            <ul class="nav nav-second-level">
+                                <li>
+                                    <a href="{{url('/')}}/projects">List Projects</a>
+                                </li>
+                                <li>
+                                    <a href="{{url('/')}}/projects/archive">Archive Projects</a>
+                                </li>
+                                <li>
+                                    <a href="{{url('/')}}/projects/create">Add Project</a>
+                                </li>                                
+                            </ul>
+                        </li>
+                        
+                        <li>
+                            <a href="#"><i class="fa fa-sitemap fa-fw"></i> Employees<span class="fa arrow"></span></a>
+                            <ul class="nav nav-second-level">
+                                <li>
+                                    <a href="{{url('/')}}/admin">List Employees</a>
+                                </li>
+                                <li>
+                                    <a href="{{url('/')}}/employees/project/report/0">List Employees (Projectwise)</a>
+                                </li>                                
+                                <li>
+                                    <a href="{{url('/')}}/admin/exemp">Ex-Employee</a>
+                                </li>
+                                <li>
+                                    <a href="{{url('/')}}/admin/create">Add Employee</a>
+                                </li>                                
+                            </ul>
+                        </li>
+                        @endif
+
+                        <li>
+                            <a href="#"><i class="fa fa-table fa-fw"></i>DSR Managment<span class="fa arrow"></span></a>
+                            <ul class="nav nav-second-level">
+                                <li>
+                                    <a href="{{url('/')}}/user/index">Write DSR</a>
+                                </li>
+                                <li>
+                                    <a href="{{url('/')}}/user/listdsr">My DSR History</a>
+                                </li>
+                                @if(Auth::user()->role_id == 1)
+                                <li>
+                                    <a href="{{url('/')}}/projectswise/dsr">Projectwise DSR</a>
+                                </li>                                  
+                                @endif  
+                            </ul>
+                        </li>
+
+                        <li>
+                            <a href="#"><i class="fa fa-plane fa-fw"></i>Leave Managment<span class="fa arrow"></span></a>
+                            <ul class="nav nav-second-level">
+                                <li>
+                                    <a href="{{url('/')}}/user/leave/request">Apply For Leave</a>
+                                </li>
+                                <li>
+                                    <a href="{{url('/')}}/user/leaves">My Leave History</a>
+                                </li>
+
+                                <li>
+                                    <a href="{{url('/')}}/leaves/advance">Leaves & Advance</a>
+                                </li>
+
+                                <li>
+                                    <a href="{{url('/')}}/la/history">My Leaves & Advance History</a>
+                                </li>
+                                                                                                
+                                @if(Auth::user()->role_id == 1)
+                                <li>
+                                    <a href="{{url('/')}}/leave/browse">Leave Browser</a>
+                                </li>
+
+								<li>
+                                    <a href="{{url('/')}}/leave/report">Leave & Advance Report</a>
+                                </li>
+                                
+								<li>
+                                    <a href="{{url('/')}}/absentee/report">Absentees Report</a>
+                                </li>     
+                                                           
+								<li>
+                                    <a href="{{url('/')}}/employees/leavestatus/update">Update Leave Status</a>
+                                </li>                                
+                                
+                                @endif
+                            </ul>
+                        </li>
+                        
+                        <li>
+                        	@if(Auth::user()->role_id == 1)
+                            <a href="#"><i class="fa fa-cogs fa-fw"></i> PCs Managment<span class="fa arrow"></span></a>
+                            @else
+                            <a href="#"><i class="fa fa-cogs fa-fw"></i> SR Managment<span class="fa arrow"></span></a>
+                            @endif
+                            
+                            <ul class="nav nav-second-level">
+                            	
+                            	@if(Auth::user()->role_id == 1)
+                                <li>
+                                    <a href="{{url('/')}}/pcs">List PCs</a>
+                                </li>
+                                <li>
+                                    <a href="{{url('/')}}/pcs/create">Add PC</a>
+                                </li>
+                                <li>
+                                    <a href="{{url('/')}}/sr/browser">SR Browser</a>
+                                </li>
+                                @endif
+                                <li>
+                                    <a href="{{url('/')}}/system/request">Write SR</a>
+                                </li>
+                                <li>
+                                    <a href="{{url('/')}}/srrequest/history">My SR History</a>
+                                </li>  
+                                                                
+                            </ul>
+                        </li>          
+                        
+                        @if(Auth::user()->role_id == 1)
+                        <li>
+                            <a href="{{url('/')}}/import/importtimelog"><i class="fa fa-dashboard fa-fw"></i> Import Time Log</a>
+                        </li>
+                        @endif
+                        
+                        <li>
+                            <a href="{{url('/')}}/user/timelog"><i class="fa fa-dashboard fa-fw"></i> Time Log</a>
+                        </li>
+                                  
+						
+
+						@if(Auth::user()->role_id == 1)
+    						<li> 
+    							<a href="#"><i class="fa fa-cogs fa-fw"></i> Advance Managment<span class="fa arrow"></span></a>
+    						
+    						
+        						@if(Auth::user()->designation=='Administrator' || Auth::user()->designation=='MD' || Auth::user()->designation=='Accountant' || Auth::user()->designation=='Sr Programmer')
+                                <ul class="nav nav-second-level">
+                                <li>
+                                    <a href="{{url('/')}}/my/advance/history"><i class="fa fa-table fa-fw"></i> Advance History</a>
+                                </li>    
+                                <li>
+                                    <a href="{{url('/')}}/import/importadvancehistory"><i class="fa fa-dashboard fa-fw"></i> Import Advance History</a>
+                                </li>
+                                <li>
+                                    <a href="{{url('/')}}/download/statement"><i class="fa fa-download fa-fw"></i> Download Satement</a>
+                                </li>                            
+                                </ul>
+                            </li>    
+                                @endif     
+                            @else
+                                 <li>
+                            		<a href="{{url('/')}}/my/advance/history"><i class="fa fa-table fa-fw"></i> Advance History</a>
+                        		</li>    
+                        @endif
+                    </ul>
+                </div>
+                <!-- /.sidebar-collapse -->
+                
+                <?php 
+                
+                use App\User;
+                /*
+                $dates = [];
+                $dates[] = date('m-d',strtotime(' + 3 day'));
+                $dates[] = date('m-d',strtotime(' + 2 day'));
+                $dates[] = date('m-d',strtotime(' + 1 day'));
+                $dates[] = date('m-d');
+                $birthDays = User::where('dob','LIKE',"%{$dates[0]}")->orWhere('dob','LIKE',"%{$dates[1]}")->orWhere('dob','LIKE',"%{$dates[2]}")->orWhere('dob','LIKE',"%{$dates[3]}")->where('working_status','=','Working')->orderby('dob','desc')->get();
+                */                    
+                
+                $birthDays = User::where('working_status','=','Working')->where(function($query){
+                    $dates = [];
+                    $dates[] = date('m-d',strtotime(' + 3 day'));
+                    $dates[] = date('m-d',strtotime(' + 2 day'));
+                    $dates[] = date('m-d',strtotime(' + 1 day'));
+                    $dates[] = date('m-d');
+                    $query->where('dob','LIKE',"%{$dates[0]}")->orWhere('dob','LIKE',"%{$dates[1]}")->orWhere('dob','LIKE',"%{$dates[2]}")->orWhere('dob','LIKE',"%{$dates[3]}");
+                })->orderby('dob','desc')->get();
+                
+                
+                
+                ?>
+                
+                
+                <div class="sidebar-nav navbar-collapse">
+                <div style="padding: 20px 0px 10px 10px;"><b>Upcoming Birthdays</b></div>
+                  	<div class="list-group">
+                		
+                		@foreach($birthDays as  $birthDay)      
+                        <a href="#" class="list-group-item">
+                            <!--  <marquee behavior="scroll" direction="left">-->
+                            {{$birthDay->first_name}} {{$birthDay->last_name}}
+                            	<span class="pull-right text-muted small"><em>(<?php echo date("j M", strtotime($birthDay->dob)); ?>)</em></span>
+                            <!-- </marquee> -->
+                        </a>
+                       @endforeach  
+                    </div>
+                </div>
+                
+                
+            </div>
+            <!-- /.navbar-static-side -->
+        </nav>
+
+        <!-- Page Content -->
+        <div id="page-wrapper">
+            <div class="container-fluid">
+               
+                
+                @yield('content')
+                
+            </div>
+            <!-- /.container-fluid -->
+            
+        </div>
+        <p style="text-align:right;padding-right:20px;"><small>Powered by PHP Workshop </small></p>
+        <!-- /#page-wrapper -->
+
+    </div>
+    <!-- /#wrapper -->
+
+    <!-- jQuery -->
+    <script src="{{url('/')}}/vendor/jquery/jquery.min.js"></script>
+
+    <!-- Bootstrap Core JavaScript -->
+    <script src="{{url('/')}}/vendor/bootstrap/js/bootstrap.min.js"></script>
+
+    <!-- Metis Menu Plugin JavaScript -->
+    <script src="{{url('/')}}/vendor/metisMenu/metisMenu.min.js"></script>
+
+    <!-- DataTables JavaScript -->
+    <script src="{{url('/')}}/vendor/datatables/js/jquery.dataTables.min.js"></script>
+    <script src="{{url('/')}}/vendor/datatables-plugins/dataTables.bootstrap.min.js"></script>
+    <script src="{{url('/')}}/vendor/datatables-responsive/dataTables.responsive.js"></script>
+    
+    <!-- Custom Theme JavaScript -->
+    <script src="{{url('/')}}/dist/js/sb-admin-2.js"></script>
+
+    <!-- Page-Level Demo Scripts - Notifications - Use for reference -->
+    <script>
+    // tooltip demo
+    $('.tooltip-demo').tooltip({
+        selector: "[data-toggle=tooltip]",
+        container: "body"
+    })
+    // popover demo
+    $("[data-toggle=popover]")
+        .popover()
+    </script>
+    
+    <!-- Page-Level Demo Scripts - Tables - Use for reference -->
+    <script>
+    $(document).ready(function() {
+        $('#dataTables-example').DataTable({
+            responsive: true,
+            "lengthMenu": [[200, -1], [200, "All"]],
+            "order": [[ 4, "asc" ]]
+        });
+    });
+
+    $(document).ready(function() {
+	        $('#dataTables-example2').DataTable({
+	            responsive: true,
+	            "lengthMenu": [[200, -1], [200, "All"]],
+	        });
+    });
+
+    $(document).ready(function() {
+	        $('#dataTables-example3').DataTable({
+	            responsive: true,
+	            "lengthMenu": [[200, -1], [200, "All"]],
+	            "order": [[ 9, "desc" ]]
+	        });
+    });
+    
+    </script>
+
+
+@if(date('m-d', strtotime(Auth::user()->dob)) == date('m-d'))
+<script src="{{url('/')}}/js/jquery.snow.js"></script>
+<script>
+var snowEffectInterval = jQuery.fn.snow({
+  // min size of element (default: 20)
+  minSize: 10,
+  
+  // max size of element (default: 50)
+  maxSize: 10,
+  
+  // flake fall time multiplier (default: 20)
+  fallTimeMultiplier: 20, 
+  
+  // flake fall time difference (default: 10000)
+  fallTimeDifference: 10000, 
+  
+  // interval (miliseconds) between new element spawns (default: 500)
+  spawnInterval: 100, 
+  
+  // jQuery element to apply snow effect on (should work on any block element) (default: body)
+  target: jQuery(".sidebar-nav"),
+  
+  //elements to use in generating snow effect
+  elements	: [
+  
+    // Element #1
+    { 
+      // html element to be spawned for this element
+      html: '<i class="fa fa-snowflake-o" aria-hidden="true"></i>',
+      // hex color for this element - works only for font based icons
+      color: '#ffffff'
+    },
+    
+    // Element #2
+    { 
+      // html element to be spawned for this element
+      html: '<i class="fa fa-bell-o" aria-hidden="true"></i>',
+      // hex color for this element - works only for font based icons
+      color: '#ed9b40'
+    },
+    
+    // Element #3
+    { 
+      // html element to be spawned for this element
+      html: '<i class="fa fa-star-o" aria-hidden="true"></i>',
+      // hex color for this element - works only for font based icons
+      color: 'green'
+    },
+    
+    // Element #4
+    {
+      // html element to be spawned for this element
+      html: '<i class="fa fa-music" aria-hidden="true"></i>',
+      // hex color for this element - works only for font based icons
+      color: '#cc2037'
+    },
+    
+    // Element #5
+    { 
+      // html element to be spawned for this element
+      html: '<i class="fa fa-snowflake-o" aria-hidden="true"></i>',
+      // hex color for this element - works only for font based icons
+      color: '#ffffff'
+    },
+  ]
+});
+</script>
+@endif
+    
+    @yield('calender')
+    
+    @yield('javascriptsection')
+     
+     
+     
+     
+</body>
+
+</html>
